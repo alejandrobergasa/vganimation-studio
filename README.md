@@ -1,4 +1,4 @@
-# Valedores Studio
+# VGAnimation Studio
 
 Crea vídeos con los gráficos, la música y las voces de videojuegos de Nintendo DS (Animal Crossing: Wild World, New Super Mario Bros.,
 Mario Kart DS y Pokémon Platino) trabajando con un agente de IA: **Claude Code** o **Codex**, desde una interfaz con chat o desde la terminal.
@@ -20,6 +20,20 @@ python valedores.py doctor        # comprueba el entorno
 3. **Abre el estudio**: `python valedores.py estudio`.
 
 ## El estudio
+
+También hay **extracción base de recursos** para Inazuma Eleven (`inazuma-eleven`), Mario Party DS (`mario-party-ds`),
+Phoenix Wright: Trials and Tribulations (`phoenix-wright-3`), El profesor Layton y la villa misteriosa (`profesor-layton`)
+y Super Mario 64 DS (`super-mario-64-ds`). Aún no tienen motor de vídeo. Conservan todos los archivos NitroFS,
+abren contenedores compatibles y convierten los recursos descritos en su `CONOCIMIENTO.md`; los formatos propietarios
+pendientes siguen como binarios originales. Para extraer estos cinco juegos:
+
+```powershell
+python valedores.py extraer inazuma-eleven mario-party-ds phoenix-wright-3 profesor-layton super-mario-64-ds
+```
+
+En `biblioteca/<juego>/extraidos/`, consulta `README.md`, `catalogo.json`, `avisos.log` y `errores.log` para conocer
+la cobertura real. Los WAV exportados son muestras de instrumentos; las canciones SSEQ se conservan sin sintetizar.
+`--rapido` genera una muestra parcial. El catálogo registra los nombres originales y los SHA-256 de cada recurso.
 
 Una página local (`127.0.0.1`, sin dependencias externas):
 

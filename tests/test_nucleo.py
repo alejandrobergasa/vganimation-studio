@@ -37,7 +37,7 @@ def test_manifiestos_validos():
     assert {'animal-crossing', 'nsmb', 'mkds', 'pokemon-platino'} <= set(ids)
     for j in juegos.todos():
         assert j['rom']['codigos'], j['id']
-        assert j['formatos'], j['id']
+        assert j['formatos'] or j.get('soporte') == 'extraccion', j['id']
         for f in j['formatos']:
             assert f['skill'] in juegos.skills_del_juego(j['id']), '%s: falta la skill %s' % (j['id'], f['skill'])
 

@@ -1,2 +1,11 @@
 # Marca la raíz del repositorio (los scripts de los juegos la buscan hacia arriba desde su ubicación).
-nombre = "valedores-studio"
+nombre = "vganimation-studio"
+
+# Precios en USD por millón de tokens, solo para agentes que no informan del coste (Codex). Claude Code informa del coste real.
+# El estudio calcula con ellos el precio de cada turno; sin precio solo enseña los tokens.
+#
+# [precios."nombre-del-modelo"]
+# entrada = 1.25         # tokens de entrada sin caché
+# salida = 10.0
+# cache_leida = 0.125
+# cache_escrita = 0

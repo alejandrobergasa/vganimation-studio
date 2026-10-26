@@ -1,10 +1,10 @@
-"""Línea de órdenes de valedores-studio: `python valedores.py <orden>`."""
+"""Línea de órdenes de vganimation-studio: `python valedores.py <orden>`."""
 import argparse
 import os
 import subprocess
 import sys
 
-from . import doctor, extraer, juegos, proyectos, revisar, rutas, skills
+from . import doctor, extraer, juegos, proyectos, revisar, rutas, skills, tareas
 
 
 def _utf8():
@@ -100,8 +100,20 @@ def cmd_proyecto(a):
 
 
 def cmd_fase(a):
-    p = proyectos.fase(a.slug, a.fase, a.estado, a.archivo, a.nota)
+    proyectos.fase(a.slug, a.fase, a.estado, a.archivo, a.nota, a.eta, a.progreso)
     print('%s · %s → %s' % (a.slug, a.fase, a.estado))
+    return 0
+
+
+def cmd_elemento(a):
+    e = proyectos.elemento(a.slug, a.id, a.tipo, a.nombre, a.fase, a.estado, a.nota, a.archivo, a.depende, a.eta, a.progreso, a.borrar)
+    print('%s · elemento %s %s' % (a.slug, a.id, 'borrado' if a.borrar else '(%s, %s) → %s' % (e['tipo'], e['fase'], e['estado'])))
+    return 0
+
+
+def cmd_cambio(a):
+    proyectos.cambio_estado(a.slug, a.id, a.estado, a.nota)
+    print('%s · cambio #%s → %s' % (a.slug, a.id, a.estado))
     return 0
 
 
@@ -109,12 +121,24 @@ def cmd_ejecutar(a):
     if not proyectos.existe(a.slug):
         print('No existe el proyecto %s' % a.slug)
         return 2
-    cmd = a.comando[1:] if a.comando and a.comando[0] == '--' else a.comando
+    cmd = list(a.comando)
+    while len(cmd) > 1 and cmd[0] in ('--eta', '--etiqueta', '--fase', '--elemento'):   # argparse deja pasar las opciones detrás del slug en el resto
+        k, v = cmd.pop(0)[2:], cmd.pop(0)
+        setattr(a, k, int(v) if k == 'eta' else v)
+    if cmd and cmd[0] == '--':
+        cmd = cmd[1:]
     if not cmd:
         print('Falta el comando: valedores.py ejecutar <slug> -- python -I ...')
         return 2
     env = dict(os.environ, VALEDORES_PROYECTO=a.slug, PYTHONIOENCODING='utf-8')
-    return subprocess.call(cmd, cwd=rutas.REPO, env=env)
+    # Se registra como tarea para que el estudio enseñe una barra de progreso con el tiempo previsto.
+    tid = tareas.iniciar(a.slug, a.etiqueta or tareas.etiqueta_de(cmd), tareas.clave_de(cmd), a.eta, a.fase, a.elemento)
+    codigo = 1
+    try:
+        codigo = subprocess.call(cmd, cwd=rutas.REPO, env=env)
+        return codigo
+    finally:
+        tareas.terminar(a.slug, tid, codigo == 0)
 
 
 def cmd_revisar(a):
@@ -134,7 +158,7 @@ def cmd_estudio(a):
 
 def principal(argv=None):
     _utf8()
-    ap = argparse.ArgumentParser(prog='valedores.py', description='valedores-studio: vídeos a partir de assets de videojuegos.')
+    ap = argparse.ArgumentParser(prog='valedores.py', description='vganimation-studio: vídeos a partir de assets de videojuegos.')
     sub = ap.add_subparsers(dest='orden', required=True)
 
     sub.add_parser('estado', help='resumen de juegos, proyectos y bandejas').set_defaults(f=cmd_estado)
@@ -169,10 +193,38 @@ def principal(argv=None):
     f.add_argument('estado', choices=proyectos.ESTADOS)
     f.add_argument('--archivo', nargs='*', default=None, help='ficheros del proyecto que produce la fase')
     f.add_argument('--nota', default=None, help='resumen para el usuario')
+    f.add_argument('--eta', type=int, default=None, help='segundos que se prevé que tarde (barra de progreso)')
+    f.add_argument('--progreso', type=int, default=None, help='0-100, solo si se conoce de verdad')
     f.set_defaults(f=cmd_fase)
+
+    e = sub.add_parser('elemento', help='registra o actualiza un concepto del vídeo (personaje, escena, voz…) en el mapa del estudio')
+    e.add_argument('slug')
+    e.add_argument('id', help='identificador corto: mario, escena_03, voz_portero…')
+    e.add_argument('--tipo', choices=proyectos.TIPOS_ELEMENTO)
+    e.add_argument('--nombre', help='nombre para mostrar')
+    e.add_argument('--fase', choices=proyectos.IDS_FASE, help='fase a la que pertenece (obligatoria al crearlo)')
+    e.add_argument('--estado', choices=proyectos.ESTADOS)
+    e.add_argument('--nota', default=None)
+    e.add_argument('--archivo', nargs='*', default=None, help='ficheros del proyecto que lo muestran (relativos a proyectos/<slug>/)')
+    e.add_argument('--depende', nargs='*', default=None, help='ids de otros elementos de los que depende')
+    e.add_argument('--eta', type=int, default=None)
+    e.add_argument('--progreso', type=int, default=None)
+    e.add_argument('--borrar', action='store_true')
+    e.set_defaults(f=cmd_elemento)
+
+    c = sub.add_parser('cambio', help='marca el estado de una petición de cambio del usuario')
+    c.add_argument('slug')
+    c.add_argument('id', type=int)
+    c.add_argument('estado', choices=proyectos.ESTADOS_CAMBIO)
+    c.add_argument('--nota', default=None)
+    c.set_defaults(f=cmd_cambio)
 
     x = sub.add_parser('ejecutar', help='ejecuta un comando con el proyecto activo (salida/ y trabajo/ del proyecto)')
     x.add_argument('slug')
+    x.add_argument('--eta', type=int, default=None, help='segundos previstos (si no, la mediana de ejecuciones anteriores)')
+    x.add_argument('--etiqueta', default=None, help='nombre de la tarea en el estudio')
+    x.add_argument('--fase', choices=proyectos.IDS_FASE, default=None)
+    x.add_argument('--elemento', default=None)
     x.add_argument('comando', nargs=argparse.REMAINDER)
     x.set_defaults(f=cmd_ejecutar)
 

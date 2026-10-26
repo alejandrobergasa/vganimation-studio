@@ -9,31 +9,11 @@ import sonido
 from mk import audio as A
 from mk_abalos_plan import *
 
+from mk.musica import (BANCO, BAJO, ACORDE, METAL, LEAD, LEAD2, CAMP, PAD, TICK,      # noqa: E402
+                       BOMBO, CAJA, HAT, HAT_A, PLATO, Partitura)
+
 FS = A.FS
-BANCO = 50
-# programas del banco 50 (identificados por rango y espectro): 5 bajo, 3 acordes, 15 metales/cuerdas, 13 melodía, 16 melodía aguda, 4 campanilla,
-# 14 pad, 17 percusión corta; kit 127: 36 bombo, 40 caja, 42 charles cerrado, 46 abierto, 59 platillo
-BAJO, ACORDE, METAL, LEAD, LEAD2, CAMP, PAD, TICK = 5, 3, 15, 13, 16, 4, 14, 17
-BOMBO, CAJA, HAT, HAT_A, PLATO = 36, 40, 42, 46, 59
-
 SFX = {'derrape': (0, 465), 'explosion': (0, 566), 'turbo': (0, 546), 'cuenta': (0, 501), 'ya': (0, 251)}
-
-
-class Partitura:
-    def __init__(self, dur):
-        self.dur = dur
-        self.notas = []
-
-    def n(self, t, d, tecla, prog, vel=96, pan=64, vol=100):
-        if 0 <= t < self.dur - 0.02:
-            self.notas.append((float(t), float(min(d, self.dur - t)), int(tecla), int(vel), int(prog), int(pan), int(vol)))
-
-    def bat(self, t, kind, vel=110):
-        key, d = {'k': (BOMBO, .12), 's': (CAJA, .15), 'h': (HAT, .06), 'o': (HAT_A, .2), 'c': (PLATO, .9)}[kind]
-        self.n(t, d, key, 127, vel, 64, 100)
-
-    def render(self):
-        return sonido.tocar_notas(A.son(), BANCO, self.notas, self.dur)
 
 
 # ------------------------------------------------------------------ música por escena
@@ -179,98 +159,8 @@ def sting_fin(dur):
     return p
 
 
-# ------------------------------------------------------------------ síntesis auxiliar
-
-def _lp(x, fc, orden=2):
-    b, a = butter(orden, fc / (FS / 2), 'low'); return lfilter(b, a, x)
-
-
-def _hp(x, fc, orden=2):
-    b, a = butter(orden, fc / (FS / 2), 'high'); return lfilter(b, a, x)
-
-
-def _est(x, pan=0.0, g=1.0):
-    x = np.asarray(x, np.float32) * g
-    return np.stack([x * min(1, 1 - pan), x * min(1, 1 + pan)], 1).astype(np.float32)
-
-
-def ruido(dur, semilla=0):
-    return np.random.default_rng(semilla).normal(size=int(dur * FS)).astype(np.float32)
-
-
-def golpe(dur=0.35, f0=95.0, f1=38.0, semilla=1, g=1.0, ruido_g=0.6):
-    n = int(dur * FS); t = np.arange(n) / FS
-    f = f1 + (f0 - f1) * np.exp(-t * 14)
-    ph = 2 * np.pi * np.cumsum(f) / FS
-    env = np.exp(-t * 11)
-    r = _lp(ruido(dur, semilla), 1800) * np.exp(-t * 18) * ruido_g
-    return _est((np.sin(ph) * env + r) * g)
-
-
-def chasquido(dur=0.05, g=0.8, semilla=2):
-    n = int(dur * FS); t = np.arange(n) / FS
-    return _est(_hp(ruido(dur, semilla), 2500) * np.exp(-t * 90) * g)
-
-
-def impacto_fuerte(semilla=3):
-    n = int(1.4 * FS); t = np.arange(n) / FS
-    r = _lp(ruido(1.4, semilla), 3500) * np.exp(-t * 3.2)
-    f = 60 * np.exp(-t * 2.0)
-    s = np.sin(2 * np.pi * np.cumsum(f) / FS) * np.exp(-t * 3.0)
-    return _est((r * 0.9 + s * 1.1) * 0.8)
-
-
-def bocina(f0=420.0, dur=0.4, g=0.5, doppler=0.0, tipo='coche'):
-    n = int(dur * FS); t = np.arange(n) / FS
-    f = f0 * (1 - doppler * t / dur)
-    ph = 2 * np.pi * np.cumsum(f) / FS
-    x = np.sign(np.sin(ph)) * 0.5 + np.sign(np.sin(ph * 1.26)) * 0.5
-    x = _lp(x, 3200)
-    env = np.minimum(1, t / 0.01) * np.minimum(1, (dur - t) / 0.03)
-    return _est(x * env * g)
-
-
-def pitido(f=1000.0, dur=0.08, g=0.35):
-    n = int(dur * FS); t = np.arange(n) / FS
-    x = np.sign(np.sin(2 * np.pi * f * t)) * 0.4 + np.sin(2 * np.pi * f * t) * 0.6
-    return _est(x * np.minimum(1, t / 0.004) * np.minimum(1, (dur - t) / 0.01) * g)
-
-
-def sirena_audio(t0, t1, ganancia):
-    """Sirena de dos tonos con barrido (wail). Devuelve (inicio, audio)."""
-    n = int((t1 - t0) * FS); t = np.arange(n) / FS
-    f = 820 + 330 * np.sign(np.sin(2 * np.pi * t * 1.4)) * 0.0 + 330 * np.sin(2 * np.pi * t * 0.9) ** 3
-    ph = 2 * np.pi * np.cumsum(f) / FS
-    x = np.sin(ph) + 0.35 * np.sin(2 * ph) + 0.15 * np.sin(3 * ph)
-    return _est(x * 0.5 * ganancia(t0 + t))
-
-
-def motor(t0, t1, v_fn, gan, base=26.0, k=1.6):
-    n = int((t1 - t0) * FS); tt = t0 + np.arange(n) / FS
-    v = v_fn(tt)
-    f = base + v * k
-    ph = np.cumsum(f) / FS
-    saw = 2 * (ph % 1.0) - 1
-    saw2 = 2 * ((ph * 2.003) % 1.0) - 1
-    x = _lp(saw * 0.6 + saw2 * 0.25, 1300, 2)
-    ru = _lp(ruido((t1 - t0), 7), 2200) * (0.05 + v / 140.0)
-    amp = 0.18 + 0.82 * np.clip(v / 70.0, 0, 1) ** 0.7
-    return _est((x + ru) * amp * gan(tt))
-
-
-def crepitar(t0, t1, gan, semilla=11):
-    rng = np.random.default_rng(semilla)
-    n = int((t1 - t0) * FS)
-    out = np.zeros((n, 2), np.float32)
-    N = int((t1 - t0) * 28)
-    for t in np.sort(rng.uniform(0, t1 - t0, N)):
-        c = chasquido(rng.uniform(.008, .03), rng.uniform(.15, .7), int(rng.integers(0, 1 << 30)))
-        i = int(t * FS); m = min(len(c), n - i)
-        if m > 0: out[i:i + m] += c[:m] * float(gan(t0 + t))
-    base = _lp(ruido(t1 - t0, 5), 400) * 0.25
-    out += _est(base * gan(t0 + np.arange(n) / FS))
-    return out
-
+from mk import sintesis as S                        # noqa: E402
+from mk.sintesis import (_lp, _hp, _est, ruido, golpe, chasquido, impacto_fuerte, bocina, pitido, sirena_audio, motor, crepitar)  # noqa: E402
 
 # ------------------------------------------------------------------ voces tipo máquina de escribir
 
@@ -281,24 +171,7 @@ VOZ = {'ABALOS': dict(prog=LEAD, base=47, rango=(0, 3, 5, 7, 2, 10), vel=96, pan
 
 
 def voces(dialogo):
-    por = {k: [] for k in VOZ}
-    for (t0, t1, quien, txt) in dialogo:
-        v = VOZ[quien]
-        letras = [c for c in txt if c.strip()]
-        cps = 18.0
-        k = 0
-        for i, c in enumerate(txt):
-            if c.isalpha() and (c.lower() in 'aeiouáéíóú' or i % 3 == 0):
-                t = t0 + i / cps
-                if t < t1:
-                    key = v['base'] + v['rango'][(k * 5 + ord(c)) % len(v['rango'])] + (2 if txt.rstrip().endswith('?') and i > len(txt) * .8 else 0)
-                    por[quien].append((t, 0.075, key, v['vel'], v['prog'], v['pan'], 100))
-                    k += 1
-    out = {}
-    for q, nn in por.items():
-        if nn:
-            out[q] = sonido.tocar_notas(A.son(), BANCO, nn, max(n[0] for n in nn) + 1.0)
-    return out
+    return S.voces(dialogo, VOZ)
 
 
 # ------------------------------------------------------------------ composición

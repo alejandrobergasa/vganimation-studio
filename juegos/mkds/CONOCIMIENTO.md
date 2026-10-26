@@ -27,6 +27,7 @@ Código: `tools/mkds/` (ROM, modelos, NKM), `video/mk/` (motor). Reutiliza `tool
 ## Audio
 - `data/Sound/sound_data.sdat`: **sin símbolos** (sin nombres). 76 secuencias de música, 5 SSAR de efectos (596+346+182+24+8). `Sonido(rom, sdat='data/Sound/sound_data.sdat')`.
 - Ajustes hechos en `sonido.py` para MKDS: límite de 32 canales (la DS tiene 16; sin él algunas secuencias de efectos se desbocan y tardan minutos) y guardia contra bucles sin espera.
+- Música propia: `mk/musica.py` (`Partitura` + programas del banco 50: 5 bajo, 3 acordes, 13 melodía, 14 pad, 15 metales, 4 campanilla; kit 127). Ejemplo: `proyectos/bolas_negras/musica_bn.py`. Notas con `dur` < intervalo entre notas dejan huecos de silencio total: solapa pad y bajo.
 - `biblioteca/mkds/extraidos/audio/catalogo_audio.csv` (duración/pico/rms). Ids elegidos para cada cinemática: ver su storyboard.
 
 ## Motor de render (`video/mk/`)
@@ -36,3 +37,21 @@ Código: `tools/mkds/` (ROM, modelos, NKM), `video/mk/` (motor). Reutiliza `tool
 - Partículas: trayectoria cerrada (p0 + v·a + ½·g·a², con arrastre opcional) para evaluar cualquier t.
 - Fallos resueltos: tex 4D en numba (`tex[mi]`), vecinos de mip en niveles pequeños, ejes (+x = izquierda del kart), signo de `curv`, ruedas que giran con `rot_x(+giro)`.
 - Pendiente / ideas: animaciones de textura de circuito (`course_model.nsbta`: agua, lava), `nsbtp` de objetos, objetos de circuito (OBJI → modelos de `MapObj`), colisión KCL, SPA (partículas del juego), escenas `Scene/*.carc` (podio, créditos).
+
+## Personajes con foto sobre pilotos de la ROM (`mk/personas.py`) y escenarios a medida
+- `Personaje(motor, nombre, foto, hitos, pelo, camisa, mangas, torso, botones, pantalon, ancho=..., escala=5)`: el **piloto de la ROM** (Mario) con la foto como
+  `P_face.1` y `P_main` recoloreado (gorra → pelo o piel si `pelo=None`, camisa, mangas, torso, botones) y las animaciones del juego (`drive/win/lose/spin`).
+  `hitos` = (fila de los ojos, fila de la barbilla, columna del centro de la cara) en píxeles de la foto; el resto de rasgos sale de proporciones medias medidas
+  en el ejemplo de Ábalos. `.sentado(pos, yaw, anim, frame)` para ir en un kart (pos = kart + R @ (0, a·s, z·s): el origen del piloto es el asiento) y
+  `.de_pie(pos, yaw, fase, anim, frame)` con piernas de cajas que caminan (`extra.Peaton`). Escala 5: busto ≈ 4 u, de pie ≈ 6 u.
+- Trucos de la textura: el borde derecho de la cara da la vuelta a la nuca, por eso se funde con la piel (si no sale el fondo de la foto); la nariz del modelo
+  usa la esquina inferior derecha de la textura (color de piel); `ancho` es el medio ancho de la cara en veces ojos-barbilla: 0,72 por defecto; **más ancho = cara menos estirada** (Alega y Vivi, de cara estrecha, quedan bien con 0,86; con 0,66 salen anchas y no se reconocen), y el fundido hacia la piel se desplaza con él; el calvo se aclara
+  (`brillo_calvo`). Con el piloto de Luigi la malla da artefactos: se usa la de Mario para todos.
+- Encuadre: la cara de un piloto sentado está ≈ 3,6 u sobre el suelo del kart; de pie ≈ 6,1 u locales (Q = 0,72). Apuntar la cámara a la frente (5,4 u) enseña solo la gorra.
+  En un vestíbulo estrecho, la persona que cobra tapa al cliente: se aparta de eje en cada plano (cortes).
+- Los materiales `m.solido(...)` **no tienen culling**: se ven por las dos caras. Un cuerpo de edificio cerrado tapa una puerta aunque haya otro objeto detrás,
+  y desde dentro de una caja se ve el interior; para huecos (puertas) montar el edificio con varias cajas y forrar el vestíbulo.
+- Vídeo «BOLAS NEGRAS»: en `mario_course` el único sitio llano, despejado y sin vallas junto a la calzada es el **lado izquierdo de la recta de s ≈ 75–150**
+  (tras la meta); la recta de meta tiene vallas y farolas a 12–20 u de la calzada, y `ridge_course` va por un acantilado.
+  El escenario propio se define en un sistema local (`Sitio`) respecto a `Pista.muestra(s, lateral)` con una escala `Q` para encajar con los karts.
+- En vertical el ancho visible es 0,5625 × el alto: para encuadrar dos karts de 6 u hace falta una cámara a ≈ 20 u con FOV 56.

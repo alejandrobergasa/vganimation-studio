@@ -1,0 +1,39 @@
+{
+  "id": "phoenix-wright-3",
+  "nombre": "Phoenix Wright: Ace Attorney – Trials and Tribulations",
+  "corto": "Phoenix Wright 3",
+  "plataforma": "Nintendo DS",
+  "descripcion": "Extracción base de recursos. Archivos originales, scripts binarios de mes_all.bin y bancos SDAT. Los gráficos empaquetados en data.bin requieren un decodificador específico.",
+  "soporte": "extraccion",
+  "rom": {
+    "codigos": [
+      "YG3Y"
+    ],
+    "region": "Europa (español e italiano)",
+    "ejemplo": "Phoenix Wright - Ace Attorney - Trials and Tribulations (Europe) (Es,It).nds"
+  },
+  "depende": [
+    "nsmb"
+  ],
+  "extractor": {
+    "comandos": [
+      [
+        "tools/extraer.py",
+        "--rom",
+        "{rom}",
+        "--salida",
+        "{extraidos}"
+      ]
+    ],
+    "rapido": [
+      "--rapido"
+    ],
+    "duracion_aprox": "depende de la ROM; --rapido genera una muestra parcial",
+    "fuentes": [
+      "nucleo/valedores/nitro.py",
+      "nucleo/valedores/recursos_nds.py"
+    ]
+  },
+  "formatos": [],
+  "vistas": []
+}

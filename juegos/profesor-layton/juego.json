@@ -1,0 +1,39 @@
+{
+  "id": "profesor-layton",
+  "nombre": "El profesor Layton y la villa misteriosa",
+  "corto": "Profesor Layton",
+  "plataforma": "Nintendo DS",
+  "descripcion": "Extracción base de recursos. Descompresión Level-5, fondos de data/bg, fuentes NFTR y bancos SDAT. Animaciones ARC/ARJ y audio SADL conservados sin convertir.",
+  "soporte": "extraccion",
+  "rom": {
+    "codigos": [
+      "A5FP"
+    ],
+    "region": "Europa",
+    "ejemplo": "Professor.Layton.nds"
+  },
+  "depende": [
+    "nsmb"
+  ],
+  "extractor": {
+    "comandos": [
+      [
+        "tools/extraer.py",
+        "--rom",
+        "{rom}",
+        "--salida",
+        "{extraidos}"
+      ]
+    ],
+    "rapido": [
+      "--rapido"
+    ],
+    "duracion_aprox": "depende de la ROM; --rapido genera una muestra parcial",
+    "fuentes": [
+      "nucleo/valedores/nitro.py",
+      "nucleo/valedores/recursos_nds.py"
+    ]
+  },
+  "formatos": [],
+  "vistas": []
+}

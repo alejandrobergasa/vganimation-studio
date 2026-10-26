@@ -31,6 +31,13 @@ def _archivos_extractor(juego):
             for n in sorted(fs):
                 if n.endswith('.py'):
                     yield os.path.join(raiz, n)
+    # Los extractores base DS comparten lectores en el núcleo. También deben
+    # invalidar el sello cuando cambian, aunque tools/ del juego no cambie.
+    for relativo in m.get('extractor', {}).get('fuentes', []):
+        p = os.path.realpath(os.path.join(rutas.REPO, relativo))
+        if os.path.commonpath([p, os.path.realpath(rutas.REPO)]) != os.path.realpath(rutas.REPO):
+            raise ValueError('Fuente del extractor fuera del repositorio: %s' % relativo)
+        yield p
 
 
 def hash_extractor(juego):

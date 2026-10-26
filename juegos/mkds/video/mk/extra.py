@@ -149,22 +149,33 @@ class _Ov:
 
 
 class Pasajero:
-    """Piloto de la ROM (sin kart) con texturas a medida. `malla(anim, frame)` -> Malla horneada (con caché)."""
-    def __init__(self, motor, piloto='mario', abalos=False):
+    """Piloto de la ROM (sin kart) con texturas a medida. `malla(anim, frame)` -> Malla horneada (con caché).
+
+    `texturas` = {'P_face.1': RGBA (n x n), 'P_main': RGBA (32 x 64)} sustituye la cara (media cara, centro en x = 0) y el cuerpo del piloto;
+    `nombre` debe ser único por personaje (el motor cachea los materiales por modelo + nombre de textura). `abalos=True` es el atajo del
+    ejemplo de Ábalos. La visera de la gorra se aplasta como flequillo y los uv de la cara se ajustan al tamaño de la textura."""
+    def __init__(self, motor, piloto='mario', abalos=False, texturas=None, nombre=None):
         self.m = motor
         self.c = M.piloto(piloto)
-        self.abalos = abalos
         self.escala_uv = {}
         if abalos:
             base = M.piloto('mario')
+            texturas = {'P_face.1': cara_abalos(128), 'P_main': main_abalos(base.texlook.get('P_main', 'P_main_pl'))}
+            nombre = 'ABALOS'
+        self.abalos = texturas is not None
+        if texturas is not None:
+            nombre = (nombre or 'CUSTOM').upper()
+            base = M.piloto(piloto)
+            self.k_uv = texturas['P_face.1'].shape[0] / 32.0
             # conjunto propio: mismas mallas, otras texturas (el motor cachea materiales por id del modelo + nombre,
             # así que se registra con un nombre de textura distinto)
-            ov = {'ABALOS_face': cara_abalos(128), 'ABALOS_main': main_abalos(base.texlook.get('P_main', 'P_main_pl'))}
-            self.c = M.Conjunto(base.nitro, None, base.anims, nombre='abalos')
+            ov = {nombre + '_face': texturas['P_face.1'], nombre + '_main': texturas['P_main']}
+            self.c = M.Conjunto(base.nitro, None, base.anims, nombre=nombre.lower())
             self.c.texlook = _Ov(base.texlook, ov)
-            self.renombre = {'P_face.1': 'ABALOS_face', 'P_main': 'ABALOS_main'}
+            self.renombre = {'P_face.1': nombre + '_face', 'P_main': nombre + '_main'}
         else:
             self.renombre = {}
+            self.k_uv = 1.0
         self._cache = {}
         self._pre = None
 
@@ -205,7 +216,7 @@ class Pasajero:
             if visera:                                  # la visera pasa a ser un flequillo pegado a la frente
                 xyz[n, :, 2] = 0.05 + (xyz[n, :, 2] - 0.05) * 0.75
             keep.append(True)
-            if mt.name == 'P_face': uvm[n] = uvm[n] * 4.0
+            if mt.name == 'P_face': uvm[n] = uvm[n] * self.k_uv
             n += 1
         keep = np.array(keep)
         return E.Malla(xyz[keep], uvm[keep], mal.nrm[keep], mal.col[keep], mal.mat[keep], mal.alfa[keep])
@@ -264,8 +275,8 @@ def cuerpo_kart(kart, pos, yaw=0.0, pitch=0.0, roll=0.0, giro=0.0, volante=0.0, 
 
 class Peaton:
     """Busto de piloto con piernas (caminar / correr) para personajes a pie."""
-    def __init__(self, motor, piloto, piel=(0.93, 0.72, 0.55), pantalon=None, zapato=(0.45, 0.25, 0.1), largo=1.5, escala=5.0):
-        self.p = Pasajero(motor, piloto)
+    def __init__(self, motor, piloto, piel=(0.93, 0.72, 0.55), pantalon=None, zapato=(0.45, 0.25, 0.1), largo=1.5, escala=5.0, pasajero=None):
+        self.p = pasajero if pasajero is not None else Pasajero(motor, piloto)
         self.largo, self.escala = largo, escala
         mp = motor.solido(piel); mz = motor.solido(zapato)
         pierna = caja(mp, 0.62, largo, 0.62, centro=(0, -largo / 2, 0))

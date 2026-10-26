@@ -8,6 +8,13 @@ description: Añade un videojuego nuevo al repo (manifiesto, extractor, motor, s
 Un juego es una carpeta autocontenida `juegos/<id>/` (id en minúsculas con guiones). Todo lo demás
 (ROMs, biblioteca, proyectos, estudio, CLI) lo descubre solo a partir de su `juego.json`.
 
+Si el encargo se limita a habilitar la extracción, se puede registrar primero con `"soporte": "extraccion"`
+y `"formatos": []`, sin motor ni capturas de vídeo ficticias. Incluye una skill `recursos-<id>` y documenta
+qué se conserva, qué se convierte y qué necesita todavía un lector. El estudio mostrará la extracción sin
+ofrecer crear vídeos. El motor, la skill de cinemáticas y las vistas se incorporan cuando estén probados.
+Si el usuario ha pedido ejecutar él la extracción, valida con datos sintéticos y lectura en memoria;
+no ejecutes la extracción completa ni crees un vídeo de prueba en contra de su indicación.
+
 ## Estructura mínima
 ```
 juegos/<id>/
@@ -36,6 +43,8 @@ biblioteca/<id>/personalizados/   assets propios del usuario (versionados)
 - `rom.codigos`: los 4 caracteres de la cabecera NDS (offset 0xC). `python valedores.py roms` los muestra.
 - `extractor.comandos`: argv relativos a `juegos/<id>/`, ejecutados con `python -I`. `{rom}` y `{extraidos}` se
   sustituyen. Debe escribir en `{extraidos}` (= `biblioteca/<id>/extraidos/`) y ser **repetible**.
+- `extractor.fuentes`: ficheros compartidos relativos a la raíz del repo que también deben entrar en la huella
+  del extractor (por ejemplo `nucleo/valedores/nitro.py`). `depende` cubre los lectores reutilizados de otros juegos.
 
 ## Reglas de código para que encaje
 - Nunca rutas relativas al propio script hacia ROMs, assets o salidas: usa `valedores.rutas`

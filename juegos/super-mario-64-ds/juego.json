@@ -1,0 +1,39 @@
+{
+  "id": "super-mario-64-ds",
+  "nombre": "Super Mario 64 DS",
+  "corto": "Super Mario 64 DS",
+  "plataforma": "Nintendo DS",
+  "descripcion": "Extracción base de recursos. Archivos NitroFS, miembros NARC, descompresión LZ77/LZ y bancos SDAT. Los BMD/BCA propios no son modelos Nitro estándar.",
+  "soporte": "extraccion",
+  "rom": {
+    "codigos": [
+      "ASMP"
+    ],
+    "region": "Europa",
+    "ejemplo": "Super Mario 64 DS (E).nds"
+  },
+  "depende": [
+    "nsmb"
+  ],
+  "extractor": {
+    "comandos": [
+      [
+        "tools/extraer.py",
+        "--rom",
+        "{rom}",
+        "--salida",
+        "{extraidos}"
+      ]
+    ],
+    "rapido": [
+      "--rapido"
+    ],
+    "duracion_aprox": "depende de la ROM; --rapido genera una muestra parcial",
+    "fuentes": [
+      "nucleo/valedores/nitro.py",
+      "nucleo/valedores/recursos_nds.py"
+    ]
+  },
+  "formatos": [],
+  "vistas": []
+}

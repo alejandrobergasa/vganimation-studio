@@ -1,5 +1,5 @@
 'use strict';
-// Valedores Studio: interfaz de un solo fichero, sin dependencias. El texto del usuario/agente siempre entra por textContent.
+// VGAnimation Studio: interfaz de un solo fichero, sin dependencias. El texto del usuario/agente siempre entra por textContent.
 
 const $vista = document.getElementById('vista');
 const $aviso = document.getElementById('aviso');
@@ -116,8 +116,9 @@ function galeria(imgs) {
 
 function pantallaJuegos() {
   const rej = h('div', { class: 'rejilla' }, ESTADO.juegos.map(j => {
-    const acc = h('div', { class: 'acciones' },
-      h('button', { class: 'primario', onclick: () => formularioProyecto(j) }, 'Crear vídeo'));
+    const acc = h('div', { class: 'acciones' });
+    if (j.formatos.length) acc.append(h('button', { class: 'primario', onclick: () => formularioProyecto(j) }, 'Crear vídeo'));
+    else acc.append(h('span', { class: 'suave' }, 'Extracción de recursos · motor de vídeo pendiente'));
     if (j.rom && j.estado !== 'al_dia') acc.append(h('button', { onclick: () => extraer(j) }, j.estado === 'sin_extraer' ? 'Extraer assets' : 'Actualizar assets'));
     return h('div', { class: 'juego' },
       galeria(j.vistas),
@@ -264,222 +265,11 @@ function pantallaProyectos() {
       return h('div', { class: 'item', onclick: () => { location.hash = '#/p/' + p.slug; } },
         h('div', { class: 'grow' }, h('div', { class: 't' }, p.titulo),
           h('div', { class: 'suave', style: 'font-size:13px' }, (j ? j.corto : p.juego) + ' · ' + p.actualizado)),
+        h('div', { class: 'puntos-fases', title: ESTADO.fases.map(f => f.nombre + ': ' + ESTADO_CORTO[p.fases[f.id].estado]).join('\n') },
+          ESTADO.fases.map(f => h('i', { class: p.fases[f.id].estado }))),
         pend ? h('span', { class: 'est validar' }, 'espera tu validación: ' + pend[0]) : h('span', { class: 'est' }, 'fase: ' + p.fase_actual));
     })) : h('div', { class: 'tarjeta' }, 'Aún no hay proyectos. ', h('a', { href: '#/' }, 'Crea el primero eligiendo un juego.')),
   ));
-}
-
-// ---------------------------------------------------------------- proyecto + chat
-async function pantallaProyecto(slug) {
-  let vp = await api('/api/proyectos/' + slug);
-  let faseSel = vp.proyecto.fase_actual;
-  const j = juegoPor(vp.proyecto.juego);
-
-  const colIzq = h('div', { class: 'col izq' });
-  const mensajes = h('div', { class: 'mensajes' });
-  const texto = h('textarea', { rows: 2, placeholder: 'Escribe al agente… (Enter envía, Mayús+Enter salto de línea)' });
-  const btnEnviar = h('button', { class: 'primario', onclick: () => enviar() }, 'Enviar');
-  const btnParar = h('button', { class: 'peligro', hidden: true, onclick: () => api('/api/proyectos/' + slug + '/parar', { metodo: 'POST' }) }, 'Parar');
-  const estadoTxt = h('span', { class: 'suave' });
-  const rapidos = h('div', { class: 'rapidos' }, [
-    ['Solo el guion', 'Hazme solo la fase de guion y párate para que la valide.'],
-    ['Solo la música', 'Hazme solo la música (con audio de muestra) y párate para que la escuche.'],
-    ['Storyboard', 'Prepara el storyboard y párate para validarlo.'],
-    ['Previsualización', 'Genera la previsualización (fotogramas clave) y párate.'],
-    ['Todo de una', 'Hazlo todo seguido hasta el vídeo final y la revisión, y enséñame solo el resultado.'],
-  ].map(([t, m]) => h('button', { onclick: () => enviar(m) }, t)));
-  const chips = h('div', { class: 'chips' });
-  const selectorFicheros = h('input', { type: 'file', multiple: true, hidden: true });
-  const btnClip = h('button', { class: 'clip', title: 'Adjuntar fotos, vídeos, audios o assets', onclick: () => selectorFicheros.click() }, '📎 Adjuntar');
-  const velo = h('div', { class: 'velo', hidden: true }, 'Suelta los ficheros para adjuntarlos');
-  const colCentro = h('div', { class: 'col chat' }, mensajes,
-    h('div', { class: 'compositor' }, rapidos, chips, texto,
-      h('div', { class: 'pie' }, btnEnviar, btnClip, btnParar, estadoTxt, selectorFicheros)), velo);
-  const colDer = h('div', { class: 'col der' });
-  $vista.replaceChildren(h('div', { class: 'proyecto' }, colIzq, colCentro, colDer));
-
-  // ---- chat
-  let vivo = null, ocupado = vp.ocupado;
-  const herr = {};
-  const abajo = () => { mensajes.scrollTop = mensajes.scrollHeight; };
-  function fijarOcupado(o) {
-    ocupado = o; btnEnviar.disabled = o; btnParar.hidden = !o;
-    estadoTxt.replaceChildren(o ? h('span', { class: 'puntos' }, 'El agente está trabajando') : '');
-  }
-  function pintar(ev) {
-    switch (ev.t) {
-      case 'usuario':
-        mensajes.append(h('div', { class: 'msg usuario' }, ev.texto,
-          ev.adjuntos && ev.adjuntos.length ? h('div', { class: 'adjs' }, ev.adjuntos.map(a =>
-            a.tipo === 'imagen' ? h('img', { src: a.url, title: a.nombre, onclick: () => ampliar(a.url) })
-              : a.tipo === 'video' ? h('video', { src: a.url, controls: true, preload: 'metadata' })
-                : h('a', { href: a.url, target: '_blank', class: 'adj' }, (a.tipo === 'audio' ? '🎵 ' : '📄 ') + a.nombre))) : null));
-        break;
-      case 'delta':
-        if (!vivo) { vivo = h('div', { class: 'msg agente' }); mensajes.append(vivo); }
-        vivo.append(document.createTextNode(ev.texto)); break;
-      case 'asistente':
-        if (vivo) { vivo.remove(); vivo = null; }
-        if (ev.texto && ev.texto.trim()) mensajes.append(h('div', { class: 'msg agente' }, ev.texto)); break;
-      case 'herramienta': {
-        vivo = null;
-        const e = h('div', { class: 'herr', title: ev.resumen }, '⚙ ' + ev.nombre + (ev.resumen ? ': ' + ev.resumen : ''));
-        herr[ev.id] = e; mensajes.append(e); break; }
-      case 'resultado':
-        if (herr[ev.id] && !ev.ok) herr[ev.id].append(' ✗ ' + (ev.resumen || 'falló'));
-        break;
-      case 'fin': vivo = null;
-        if (ev.duracion || ev.coste) mensajes.append(h('div', { class: 'msg sistema' }, 'Turno terminado' + (ev.duracion ? ' en ' + ev.duracion.toFixed(0) + ' s' : '') + (ev.coste ? ' · ' + ev.coste.toFixed(3) + ' $' : '')));
-        break;
-      case 'error': vivo = null; mensajes.append(h('div', { class: 'msg error' }, '✗ ' + ev.texto)); break;
-      case 'sistema': mensajes.append(h('div', { class: 'msg sistema' }, ev.texto)); break;
-      case 'estado': fijarOcupado(ev.estado === 'trabajando'); if (!ocupado) vivo = null; return;
-      case 'proyecto': refrescar(); return;
-    }
-    abajo();
-  }
-
-  // ---- adjuntos: se suben a entrada/<slug>/ nada más elegirlos y viajan con el siguiente mensaje
-  const adjuntos = [];
-  function pintarChips() {
-    chips.replaceChildren(...adjuntos.map(a => h('div', { class: 'chip' + (a.error ? ' error' : '') },
-      a.tipo === 'imagen' && a.url ? h('img', { src: a.url }) : h('span', { class: 'ico' }, { video: '🎬', audio: '🎵' }[a.tipo] || '📄'),
-      h('span', { class: 'nom', title: a.error || a.nombre }, a.error ? a.error : a.nombre),
-      a.url || a.error ? null : h('span', { class: 'prog' }, Math.round((a.progreso || 0) * 100) + '%'),
-      h('button', { class: 'x', title: 'Quitar', onclick: () => { adjuntos.splice(adjuntos.indexOf(a), 1); pintarChips(); } }, '×'))));
-  }
-  function adjuntar(files) {
-    for (const f of files) {
-      if (!f.name) continue;
-      const a = { nombre: f.name, tipo: 'otro', progreso: 0 };
-      adjuntos.push(a); pintarChips();
-      subirFichero(f, slug, p => { a.progreso = p; pintarChips(); })
-        .then(d => { Object.assign(a, d); pintarChips(); pend(); })
-        .catch(e => {
-          a.error = e.message; pintarChips();
-          setTimeout(() => { const i = adjuntos.indexOf(a); if (i >= 0) { adjuntos.splice(i, 1); pintarChips(); } }, 4000);
-        });
-    }
-  }
-  selectorFicheros.addEventListener('change', () => { adjuntar([...selectorFicheros.files]); selectorFicheros.value = ''; });
-  let arrastres = 0;
-  colCentro.addEventListener('dragenter', e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); arrastres++; velo.hidden = false; } });
-  colCentro.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
-  colCentro.addEventListener('dragleave', () => { if (--arrastres <= 0) { arrastres = 0; velo.hidden = true; } });
-  colCentro.addEventListener('drop', e => { e.preventDefault(); arrastres = 0; velo.hidden = true; adjuntar([...e.dataTransfer.files]); });
-  texto.addEventListener('paste', e => {
-    const fs = [...(e.clipboardData ? e.clipboardData.files : [])];
-    if (!fs.length) return;
-    e.preventDefault();
-    adjuntar(fs.map(f => (f.name && f.name !== 'image.png') ? f : new File([f], 'captura_' + Date.now() + '.png', { type: f.type })));
-  });
-
-  async function enviar(msg, rutas) {
-    const t = (msg || texto.value).trim();
-    const listos = msg ? (rutas || []).map(r => ({ ruta: r, url: true })) : adjuntos.filter(a => a.url);
-    if ((!t && !listos.length) || ocupado) return;
-    if (!msg && adjuntos.some(a => !a.url && !a.error)) { avisar('Espera a que terminen de subirse los adjuntos.'); return; }
-    try {
-      await api('/api/proyectos/' + slug + '/chat', { metodo: 'POST', json: { texto: t, adjuntos: listos.map(a => a.ruta) } });
-      if (!msg) { texto.value = ''; adjuntos.length = 0; pintarChips(); }
-    } catch (e) { avisar(e.message, 4500); }
-  }
-  texto.addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); enviar(); } });
-
-  if (!/[?&]nosse/.test(location.search)) {      // ?nosse: sin tiempo real (para capturas de pantalla automáticas)
-    const es = new EventSource('/api/proyectos/' + slug + '/eventos');
-    es.onmessage = m => pintar(JSON.parse(m.data));
-    limpiar.push(() => es.close());
-  }
-
-  // ---- paneles
-  async function refrescar() {
-    try { vp = await api('/api/proyectos/' + slug); } catch (e) { return; }
-    pintarIzq(); pintarDer();
-  }
-  let tmr = null;
-  const pend = () => { clearTimeout(tmr); tmr = setTimeout(refrescar, 400); };
-  limpiar.push(() => clearTimeout(tmr));
-
-  function pintarIzq() {
-    const p = vp.proyecto, ag = ESTADO.agentes[p.agente];
-    const guardar = async (campo, valor) => {
-      try { await api('/api/proyectos/' + slug, { metodo: 'PATCH', json: { [campo]: valor } }); pend(); } catch (e) { avisar(e.message); }
-    };
-    colIzq.replaceChildren(
-      h('h2', { style: 'margin-top:0' }, p.titulo),
-      h('div', { class: 'suave', style: 'font-size:13px' }, j ? j.nombre : p.juego),
-      h('label', {}, 'Agente'),
-      selector(Object.keys(ESTADO.agentes).map(k => [k, ESTADO.agentes[k].nombre]), p.agente, async v => {
-        const a = ESTADO.agentes[v];
-        if (!a.disponible) { avisar('«' + a.nombre + '» no está instalado.'); refrescar(); return; }
-        await api('/api/proyectos/' + slug, { metodo: 'PATCH', json: { agente: v, modelo: a.modelo_defecto, esfuerzo: a.esfuerzo_defecto } }); pend();
-      }),
-      h('label', {}, 'Modelo'), selector(ag.modelos.map(m => [m.id, m.nombre]), p.modelo, v => guardar('modelo', v)),
-      h('label', {}, 'Esfuerzo'), selector(ag.esfuerzos.map(e => [e, e]), p.esfuerzo, v => guardar('esfuerzo', v)),
-      h('label', {}, 'Ritmo'), selector(Object.entries(ESTADO.ritmos).map(([k, t]) => [k, t.split(':')[0]]), p.ritmo, v => guardar('ritmo', v)),
-      h('label', {}, 'Permisos del agente'), selector(Object.entries(ESTADO.permisos).map(([k, t]) => [k, t.split(':')[0]]), p.permisos || 'normal', v => guardar('permisos', v)),
-      h('h2', {}, 'Fases'),
-      ...vp.fases.map(f => h('div', { class: 'fase' + (f.id === faseSel ? ' actual' : ''), onclick: () => { faseSel = f.id; pintarIzq(); pintarDer(); } },
-        h('div', { class: 'n' }, f.nombre, h('span', { class: 'est ' + f.estado }, f.estado.replace('_', ' '))),
-        h('div', { class: 'r' }, f.resumen))));
-  }
-
-  async function mostrar(a) {
-    if (a.tipo === 'video') return h('video', { src: a.url, controls: true, preload: 'metadata' });
-    if (a.tipo === 'audio') return h('audio', { src: a.url, controls: true });
-    if (a.tipo === 'imagen') return h('img', { src: a.url, loading: 'lazy', onclick: () => ampliar(a.url), style: 'cursor:zoom-in' });
-    if (a.tipo === 'texto' || a.tipo === 'codigo') {
-      const pre = h('pre', {}, 'Cargando…');
-      fetch(a.url).then(r => r.text()).then(t => { pre.textContent = t.slice(0, 60000); }).catch(() => { pre.textContent = '(no se pudo leer)'; });
-      return pre;
-    }
-    return null;
-  }
-
-  async function pintarDer() {
-    const f = vp.fases.find(x => x.id === faseSel) || vp.fases[0];
-    const caja = h('div', { class: 'visor' }, h('h3', {}, f.nombre), h('div', { class: 'suave', style: 'font-size:13px' }, f.resumen));
-    if (f.nota) caja.append(h('p', {}, h('b', {}, 'Nota: '), f.nota));
-    const decidir = (accion) => async () => {
-      let nota = '';
-      if (accion === 'cambios') { nota = prompt('¿Qué hay que cambiar?'); if (!nota) return; }
-      try {
-        await api('/api/proyectos/' + slug + '/fase', { metodo: 'POST', json: { fase: f.id, accion, nota } });
-        if (accion === 'aprobar') enviar('✅ Fase «' + f.id + '» aprobada. Sigue con la siguiente' + (vp.proyecto.ritmo === 'paso_a_paso' ? ' y párate al terminarla.' : '.'));
-        else if (accion === 'cambios') enviar('Cambios en la fase «' + f.id + '»: ' + nota);
-        pend();
-      } catch (e) { avisar(e.message); }
-    };
-    caja.append(h('div', { class: 'validacion' },
-      h('button', { class: 'ok', onclick: decidir('aprobar'), disabled: f.estado === 'aprobada' }, 'Aprobar'),
-      h('button', { onclick: decidir('cambios') }, 'Pedir cambios'),
-      f.estado === 'omitida' || f.estado === 'aprobada' ? h('button', { onclick: decidir('reabrir') }, 'Reabrir') : h('button', { onclick: decidir('omitir') }, 'Omitir')));
-    const imgs = f.artefactos.filter(a => a.tipo === 'imagen');
-    if (imgs.length > 1) {
-      caja.append(h('div', { class: 'miniaturas' }, imgs.map(a => h('img', { src: a.url, loading: 'lazy', onclick: () => ampliar(a.url) }))));
-    }
-    for (const a of f.artefactos) {
-      if (imgs.length > 1 && a.tipo === 'imagen') continue;
-      const v = await mostrar(a);
-      caja.append(h('div', { class: 'suave', style: 'font-size:12.5px;margin:6px 0 3px' }, a.nombre), v);
-    }
-    if (!f.artefactos.length) caja.append(h('p', { class: 'suave' }, 'Todavía no hay nada que ver en esta fase.'));
-    const otros = vp.entradas;
-    colDer.replaceChildren(caja,
-      h('h3', { style: 'font-size:15px' }, 'Tus ficheros de entrada'),
-      ...(otros.length ? otros.map(e => h('div', { class: 'arch' }, h('a', { href: e.url, target: '_blank' }, e.nombre))) : [h('p', { class: 'suave' }, 'Nada todavía.')]),
-      subidor(slug, pend));
-  }
-
-  pintarIzq(); pintarDer(); fijarOcupado(ocupado);
-  const primero = sessionStorage.getItem('primer-' + slug);
-  if (primero) {
-    sessionStorage.removeItem('primer-' + slug);
-    let m = { texto: primero, adjuntos: [] };
-    try { m = JSON.parse(primero); } catch (e) { /* texto simple */ }
-    setTimeout(() => enviar(m.texto, m.adjuntos), 300);
-  }
 }
 
 function subidor(slug, tras) {

@@ -1,4 +1,4 @@
-# valedores-studio — vídeos a partir de assets de videojuegos
+# vganimation-studio — vídeos a partir de assets de videojuegos
 
 Repositorio único para crear vídeos con los gráficos, la música y las voces de videojuegos (de momento Nintendo DS:
 Animal Crossing: Wild World, New Super Mario Bros., Mario Kart DS y Pokémon Platino). Lo leen Claude Code (vía `CLAUDE.md`),

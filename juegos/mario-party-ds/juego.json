@@ -1,0 +1,39 @@
+{
+  "id": "mario-party-ds",
+  "nombre": "Mario Party DS",
+  "corto": "Mario Party DS",
+  "plataforma": "Nintendo DS",
+  "descripcion": "Extracción base de recursos. Contenedores BIN, descompresión LZ, recursos Nitro y bancos SDAT. Modelos y animaciones propios conservados sin reconstruir.",
+  "soporte": "extraccion",
+  "rom": {
+    "codigos": [
+      "A8TP"
+    ],
+    "region": "Europa",
+    "ejemplo": "Mario Party DS .nds"
+  },
+  "depende": [
+    "nsmb"
+  ],
+  "extractor": {
+    "comandos": [
+      [
+        "tools/extraer.py",
+        "--rom",
+        "{rom}",
+        "--salida",
+        "{extraidos}"
+      ]
+    ],
+    "rapido": [
+      "--rapido"
+    ],
+    "duracion_aprox": "depende de la ROM; --rapido genera una muestra parcial",
+    "fuentes": [
+      "nucleo/valedores/nitro.py",
+      "nucleo/valedores/recursos_nds.py"
+    ]
+  },
+  "formatos": [],
+  "vistas": []
+}

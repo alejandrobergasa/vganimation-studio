@@ -1,0 +1,39 @@
+{
+  "id": "inazuma-eleven",
+  "nombre": "Inazuma Eleven",
+  "corto": "Inazuma Eleven",
+  "plataforma": "Nintendo DS",
+  "descripcion": "Extracción base de recursos. Paquetes PKB/PKH PackNum, PAC, texturas Nitro y fuentes NFTR. Sprites, SADL y vídeo MODS conservados en formato original.",
+  "soporte": "extraccion",
+  "rom": {
+    "codigos": [
+      "YEES"
+    ],
+    "region": "España",
+    "ejemplo": "Inazuma Eleven (Spain).nds"
+  },
+  "depende": [
+    "nsmb"
+  ],
+  "extractor": {
+    "comandos": [
+      [
+        "tools/extraer.py",
+        "--rom",
+        "{rom}",
+        "--salida",
+        "{extraidos}"
+      ]
+    ],
+    "rapido": [
+      "--rapido"
+    ],
+    "duracion_aprox": "depende de la ROM; --rapido genera una muestra parcial",
+    "fuentes": [
+      "nucleo/valedores/nitro.py",
+      "nucleo/valedores/recursos_nds.py"
+    ]
+  },
+  "formatos": [],
+  "vistas": []
+}

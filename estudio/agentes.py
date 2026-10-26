@@ -7,7 +7,8 @@ Cada turno de chat lanza el CLI del agente en modo no interactivo, en la raíz d
     {'t': 'asistente', 'texto'}        mensaje completo del agente
     {'t': 'herramienta', 'id', 'nombre', 'resumen'}
     {'t': 'resultado', 'id', 'ok', 'resumen'}
-    {'t': 'fin', 'coste', 'duracion', 'tokens'}
+    {'t': 'uso_vivo', 'entrada', 'salida', 'cache_leida', 'cache_escrita'}   consumo del turno hasta ahora (no se guarda)
+    {'t': 'fin', 'coste', 'duracion', 'tokens', 'uso', 'modelo'}      `uso` = {entrada, salida, cache_leida, cache_escrita}
     {'t': 'error', 'texto'}
 """
 import json
@@ -25,12 +26,47 @@ except ImportError:  # Python < 3.11
 
 FLAGS_OCULTAR = 0x08000000 if os.name == 'nt' else 0   # CREATE_NO_WINDOW
 
-HERRAMIENTAS_CLAUDE = 'Bash,PowerShell,Read,Write,Edit,MultiEdit,Glob,Grep,NotebookEdit,WebFetch,WebSearch,TodoWrite,Skill'
+HERRAMIENTAS_CLAUDE = 'Bash,PowerShell,Read,Write,Edit,MultiEdit,Glob,Grep,NotebookEdit,WebFetch,WebSearch,TodoWrite,Skill,Agent,Task'
 
 PERMISOS = {
     'normal': 'Normal: puede editar ficheros y ejecutar comandos dentro del repo.',
     'total': 'Total: sin ninguna restricción (úsalo solo si confías en la tarea).',
 }
+
+
+CAMPOS_USO = ('entrada', 'salida', 'cache_leida', 'cache_escrita')
+
+
+def _uso_vacio():
+    return dict.fromkeys(CAMPOS_USO, 0)
+
+
+def _sumar(a, b):
+    return {k: a[k] + b[k] for k in CAMPOS_USO}
+
+
+def precios():
+    """Precios en USD por millón de tokens definidos por el usuario en `valedores.toml` (`[precios."modelo"]`).
+    Claude Code informa del coste real de cada turno; para otros agentes solo hay precio si se configura aquí."""
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'valedores.toml')
+    if tomllib is None or not os.path.isfile(p):
+        return {}
+    try:
+        with open(p, 'rb') as f:
+            return tomllib.load(f).get('precios', {})
+    except Exception:
+        return {}
+
+
+def coste_estimado(modelo, uso):
+    """USD según los precios configurados, o None si no hay precio para ese modelo."""
+    t = precios().get(modelo or '')
+    if not t or not uso:
+        return None
+    try:
+        return sum(uso[k] * float(t.get(k, 0)) for k in CAMPOS_USO) / 1e6
+    except (TypeError, ValueError):
+        return None
 
 
 def _config_codex():
@@ -95,6 +131,8 @@ class TraductorClaude:
         self.vistos = set()
         self.sesion = None
         self.hubo_delta = False
+        self.uso_hecho = _uso_vacio()     # mensajes (llamadas al modelo) ya terminados en este turno
+        self.uso_msg = _uso_vacio()       # el que se está escribiendo ahora
 
     def __call__(self, ev):
         out = []
@@ -106,6 +144,14 @@ class TraductorClaude:
             if e.get('type') == 'content_block_delta' and e.get('delta', {}).get('type') == 'text_delta':
                 self.hubo_delta = True
                 out.append({'t': 'delta', 'texto': e['delta']['text']})
+            elif e.get('type') in ('message_start', 'message_delta'):
+                u = (e.get('message', {}).get('usage') if e['type'] == 'message_start' else e.get('usage')) or {}
+                if e['type'] == 'message_start':
+                    self.uso_hecho = _sumar(self.uso_hecho, self.uso_msg)
+                self.uso_msg = {'entrada': u.get('input_tokens') or 0, 'salida': u.get('output_tokens') or 0,
+                                'cache_leida': u.get('cache_read_input_tokens') or 0,
+                                'cache_escrita': u.get('cache_creation_input_tokens') or 0}
+                out.append(dict(_sumar(self.uso_hecho, self.uso_msg), t='uso_vivo'))
         elif t == 'assistant':
             msg = ev.get('message', {})
             for b in msg.get('content', []):
@@ -130,8 +176,11 @@ class TraductorClaude:
             if ev.get('is_error'):
                 out.append({'t': 'error', 'texto': _recortar(str(ev.get('result') or 'El agente terminó con error.'), 600)})
             u = ev.get('usage') or {}
+            uso = {'entrada': u.get('input_tokens') or 0, 'salida': u.get('output_tokens') or 0,
+                   'cache_leida': u.get('cache_read_input_tokens') or 0, 'cache_escrita': u.get('cache_creation_input_tokens') or 0}
+            modelos = list((ev.get('modelUsage') or {}).keys())
             out.append({'t': 'fin', 'coste': ev.get('total_cost_usd'), 'duracion': (ev.get('duration_ms') or 0) / 1000,
-                        'tokens': (u.get('input_tokens') or 0) + (u.get('output_tokens') or 0)})
+                        'tokens': uso['entrada'] + uso['salida'], 'uso': uso, 'modelo': modelos[0] if modelos else None})
         return out
 
 
@@ -164,7 +213,11 @@ class TraductorCodex:
                 out.append({'t': 'error', 'texto': _recortar(it.get('message', ''), 600)})
         elif t == 'turn.completed':
             u = ev.get('usage') or {}
-            out.append({'t': 'fin', 'coste': None, 'duracion': None, 'tokens': (u.get('input_tokens') or 0) + (u.get('output_tokens') or 0)})
+            cacheado = u.get('cached_input_tokens') or 0          # en Codex `input_tokens` ya incluye lo cacheado
+            uso = {'entrada': max(0, (u.get('input_tokens') or 0) - cacheado), 'salida': u.get('output_tokens') or 0,
+                   'cache_leida': cacheado, 'cache_escrita': 0}
+            out.append({'t': 'fin', 'coste': None, 'duracion': None, 'tokens': (u.get('input_tokens') or 0) + (u.get('output_tokens') or 0),
+                        'uso': uso, 'modelo': None})
         elif t in ('turn.failed', 'error'):
             msg = ev.get('message') or (ev.get('error') or {}).get('message') or str(ev)
             out.append({'t': 'error', 'texto': _recortar(msg, 600)})

@@ -1,0 +1,75 @@
+{
+  "slug": "bolas_negras",
+  "titulo": "BOLAS NEGRAS",
+  "juego": "mkds",
+  "formato": "vertical",
+  "ritmo": "paso_a_paso",
+  "agente": "claude",
+  "modelo": "claude-sonnet-5-5",
+  "esfuerzo": "high",
+  "permisos": "normal",
+  "creado": "2026-10-26 20:53:03",
+  "fase_actual": "revision",
+  "fases": {
+    "idea": {
+      "estado": "aprobada",
+      "archivos": [
+        "brief.md"
+      ],
+      "nota": "Brief ampliado: reparto, escenario (ridge_course + cine con cajas), caras de entrada/, falta la imagen QUEBUSCA"
+    },
+    "guion": {
+      "estado": "aprobada",
+      "archivos": [
+        "guion.md"
+      ],
+      "nota": "15 planos, ≈36 s; textos ≤24 car/línea; añadidos propios marcados; sigue faltando QUEBUSCA"
+    },
+    "musica": {
+      "estado": "aprobada",
+      "archivos": [
+        "musica.md",
+        "musica/muestra.wav"
+      ],
+      "nota": "Pieza original 36 s con banco 50 de MKDS: La mayor 120 bpm → portero 92 → lamento 60 → golpe final"
+    },
+    "storyboard": {
+      "estado": "aprobada",
+      "archivos": [
+        "storyboard.md"
+      ],
+      "nota": "14 escenas, 36 s; cambio a mario_course (ridge es un acantilado), cine de cajas en s≈1030; falta QUEBUSCA"
+    },
+    "escenas": {
+      "estado": "aprobada",
+      "archivos": [
+        "video.py",
+        "previsualizacion/hoja.png",
+        "previsualizacion/f_03.50s.png",
+        "previsualizacion/f_06.50s.png",
+        "previsualizacion/f_14.00s.png",
+        "previsualizacion/f_17.50s.png",
+        "previsualizacion/f_20.00s.png",
+        "previsualizacion/f_26.40s.png",
+        "previsualizacion/f_32.00s.png",
+        "previsualizacion/f_35.00s.png"
+      ],
+      "nota": "Personajes rehechos sobre el piloto de Mario con la foto como cara; fotogramas fijos regenerados (sin voces ni efectos aún)"
+    },
+    "render": {
+      "estado": "aprobada",
+      "archivos": [
+        "salida/bolas_negras/bolas_negras.mp4"
+      ],
+      "nota": "Re-render con las caras de Alega y Vivi menos estiradas (ancho de cara 0,86)"
+    },
+    "revision": {
+      "estado": "aprobada",
+      "archivos": [
+        "proyectos/bolas_negras/revision.md"
+      ],
+      "nota": "Revisión hecha con hoja, fotogramas y medidas de audio; corregida la escena 9; sin ver movimiento ni oír audio"
+    }
+  },
+  "actualizado": "2026-10-26 23:31:44"
+}

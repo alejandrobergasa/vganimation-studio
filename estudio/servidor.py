@@ -17,7 +17,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
-from valedores import doctor, extraer, juegos, proyectos, rutas
+from valedores import doctor, extraer, juegos, proyectos, rutas, tareas
 
 from . import agentes, chat
 
@@ -97,12 +97,36 @@ def info_juego(m):
     }
 
 
+def _artefactos(slug, nombres, por_ruta):
+    """Ficheros (ya existentes) de un proyecto a partir de rutas relativas a `proyectos/<slug>/` o a la raíz del repo."""
+    out, vistos = [], set()
+    for a in nombres:
+        a = a.replace('\\', '/')
+        for r in ('proyectos/%s/%s' % (slug, a), a):
+            if r in por_ruta and r not in vistos:
+                vistos.add(r)
+                out.append(por_ruta[r])
+                break
+    return out
+
+
+def _nodo(n):
+    """Campos de seguimiento de tiempo de una fase o un elemento."""
+    return {'inicio': n.get('inicio'), 'eta': n.get('eta'), 'progreso': n.get('progreso'), 'duraciones': n.get('duraciones', [])}
+
+
+def _redondear(d):
+    return {k: (round(v, 4) if isinstance(v, float) else v) for k, v in d.items()}
+
+
 def vista_proyecto(slug):
     p = proyectos.leer(slug)
     base = rutas.proyecto_dir(slug)
     archivos = ficheros(base)
     por_ruta = {a['ruta']: a for a in archivos}
-    videos = [f for f in ficheros(os.path.join(rutas.SALIDA, slug)) if f['tipo'] in ('video', 'imagen')]
+    salida = ficheros(os.path.join(rutas.SALIDA, slug))
+    por_ruta.update({a['ruta']: a for a in salida})
+    videos = [f for f in salida if f['tipo'] in ('video', 'imagen')]
     fases = []
     for d in proyectos.FASES:
         f = p['fases'][d['id']]
@@ -127,12 +151,27 @@ def vista_proyecto(slug):
                 arts.append(por_ruta[r])
         if d['id'] == 'render':
             arts = list(videos)
-        fases.append(dict(d, estado=f['estado'], nota=f.get('nota', ''), artefactos=arts))
-    c = chat.obtener(slug)
-    return {'proyecto': p, 'fases': fases, 'archivos': archivos, 'videos': videos,
+        fases.append(dict(d, estado=f['estado'], nota=f.get('nota', ''), artefactos=arts, **_nodo(f)))
+    elementos = []
+    for e in p.get('elementos', {}).values():
+        elementos.append(dict(e, artefactos=_artefactos(slug, e.get('archivos', []), por_ruta), **_nodo(e)))
+    orden = {f: i for i, f in enumerate(proyectos.IDS_FASE)}
+    elementos.sort(key=lambda e: (orden.get(e['fase'], 99), e['nombre'].lower()))
+    carriles = chat.carriles_de(slug)
+    uso = chat.resumen_uso(slug)
+    paralelo = {}
+    for f in proyectos.IDS_FASE:
+        ok, motivo = proyectos.puede_paralelo(p, f)
+        paralelo[f] = {'puede': ok, 'motivo': motivo}
+    return {'proyecto': p, 'fases': fases, 'elementos': elementos, 'cambios': p.get('cambios', []),
+            'archivos': archivos, 'videos': videos,
             'entradas': [{'ruta': 'entrada/' + e, 'nombre': e, 'tipo': tipo(e), 'url': url_archivo('entrada/' + e)}
                          for e in proyectos.entradas(slug)],
-            'ocupado': c.ocupado, 'eventos': len(c.eventos)}
+            'tareas': tareas.activas(slug), 'ahora': time.time(),
+            'uso': {'total': _redondear(uso['total']), 'por_fase': {f: _redondear(d) for f, d in uso['por_fase'].items()}},
+            'carriles': [{'id': c.carril, 'ocupado': c.ocupado, 'cola': len(c.cola), 'eventos': len(c.eventos)} for c in carriles],
+            'paralelo': paralelo,
+            'ocupado': any(c.ocupado for c in carriles), 'eventos': len(carriles[0].eventos)}
 
 
 def firma(slug):
@@ -142,12 +181,52 @@ def firma(slug):
         for raiz, dirs, fs in os.walk(base):
             dirs[:] = [d for d in dirs if d != 'trabajo']
             for f in fs:
+                if f.startswith('.') or f.endswith('.tmp'):
+                    continue
                 try:
                     m = max(m, os.path.getmtime(os.path.join(raiz, f)))
                     n += 1
                 except OSError:
                     pass
+    try:                                   # las tareas en marcha cambian en trabajo/tareas.json
+        m = max(m, os.path.getmtime(os.path.join(rutas.proyecto_dir(slug), 'trabajo', 'tareas.json')))
+    except OSError:
+        pass
     return (m, n)
+
+
+def mensaje_carril(p, fase_id):
+    """Primer mensaje de un agente en paralelo."""
+    nombre = next(f['nombre'] for f in proyectos.FASES if f['id'] == fase_id)
+    return ('Haz ahora la fase «%s» (`%s`) en paralelo. Las fases de las que depende ya están aprobadas: lee sus ficheros en `proyectos/%s/`. '
+            'Márcala `en_curso` al empezar (con `--eta` en segundos), regístrale sus elementos, y al terminar márcala `validar` con una nota y para.'
+            % (nombre, fase_id, p['slug']))
+
+
+def instrucciones_cambio(slug, c):
+    """Lo que recibe el agente además del texto del usuario cuando éste pide un cambio."""
+    p = proyectos.leer(slug)
+    objs = []
+    for o in c['objetivos']:
+        if o['tipo'] == 'fase':
+            objs.append('la fase `%s`' % o['id'])
+        else:
+            e = p.get('elementos', {}).get(o['id'])
+            objs.append('el elemento `%s` (%s, fase `%s`)' % (o['id'], e['nombre'], e['fase']) if e else 'el elemento `%s`' % o['id'])
+    lineas = [
+        'Petición de cambio #%d del usuario. Puede pedirse sobre cualquier parte del vídeo y en cualquier momento, también sobre fases anteriores a la que se está viendo.' % c['id'],
+        'Afecta a: %s.' % (', '.join(objs) if objs else 'no lo ha concretado (decide tú el alcance)'),
+    ]
+    if c['fases_marcadas']:
+        lineas.append('Ya he puesto en `cambios` estas fases: %s.' % ', '.join('`%s`' % f for f in c['fases_marcadas']))
+    lineas += [
+        'Procede así:',
+        '1. `python valedores.py cambio %s %d en_curso`.' % (slug, c['id']),
+        '2. Calcula el alcance real. Si toca fases o elementos que no están marcados, márcalos (`fase … cambios --nota …`, `elemento … --estado cambios`) y díselo al usuario.',
+        '3. Rehaz solo lo necesario, en orden de dependencias (guion → música y storyboard → previsualización → render → revisión). Cada fase o elemento que rehagas: `en_curso` (con `--eta`) y, al acabar, `validar`.',
+        '4. Termina con `python valedores.py cambio %s %d hecho`. En paso a paso, para al terminar la fase objetivo y pide validación; en «de una», sigue con las posteriores.' % (slug, c['id']),
+    ]
+    return '\n'.join(lineas)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -251,8 +330,8 @@ class Handler(BaseHTTPRequestHandler):
         """index.html con la versión de app.js/app.css en la URL: tras editar la interfaz el navegador nunca usa una copia vieja."""
         with open(p, encoding='utf-8') as f:
             html = f.read()
-        v = int(max(os.path.getmtime(os.path.join(WEB, n)) for n in ('app.js', 'app.css', 'index.html')))
-        html = html.replace('app.css"', 'app.css?v=%d"' % v).replace('app.js"', 'app.js?v=%d"' % v)
+        v = int(max(os.path.getmtime(os.path.join(WEB, n)) for n in os.listdir(WEB) if n.endswith(('.js', '.css', '.html'))))
+        html = re.sub(r'(src|href)="([\w.-]+\.(?:js|css))"', lambda m: '%s="%s?v=%d"' % (m.group(1), m.group(2), v), html)
         cuerpo = html.encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
@@ -294,7 +373,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({
                 'juegos': [info_juego(m) for m in juegos.todos()],
                 'agentes': agentes.catalogo(), 'permisos': agentes.PERMISOS, 'ritmos': proyectos.RITMOS,
-                'fases': proyectos.FASES,
+                'fases': proyectos.FASES, 'dependencias': proyectos.DEPENDE, 'tipos_elemento': proyectos.TIPOS_ELEMENTO,
                 'proyectos': proyectos.listar(),
             })
         if ruta == '/api/proyectos':
@@ -306,7 +385,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(vista_proyecto(m.group(1)))
         m = re.fullmatch(r'/api/proyectos/([\w-]+)/eventos', ruta)
         if m:
-            return self._sse(m.group(1), int(q.get('desde', 0) or 0))
+            return self._sse(m.group(1), int(q.get('desde', 0) or 0), q.get('carril') or chat.PRINCIPAL)
         if ruta == '/api/archivo':
             rel = q.get('ruta', '')
             p = ruta_permitida(rel)
@@ -327,10 +406,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._json([{'nivel': n, 'texto': t} for n, t in doctor.comprobar()])
         return self._error(404, 'No existe')
 
-    def _sse(self, slug, desde):
+    def _sse(self, slug, desde, carril=chat.PRINCIPAL):
         if not proyectos.existe(slug):
             return self._error(404, 'No existe el proyecto')
-        c = chat.obtener(slug)
+        if carril != chat.PRINCIPAL and carril not in proyectos.IDS_FASE:
+            return self._error(404, 'No existe el carril')
+        c = chat.obtener(slug, carril)
         self.send_response(200)
         self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
         self.send_header('Cache-Control', 'no-store')
@@ -349,6 +430,7 @@ class Handler(BaseHTTPRequestHandler):
             for ev in previos:
                 enviar(ev)
             enviar({'t': 'estado', 'estado': 'trabajando' if c.ocupado else 'libre'})
+            enviar({'t': 'cola', 'textos': c.textos_en_cola()})
             ultimo, ticks, sig = len(previos) + desde, 0, firma(slug)
             while True:
                 try:
@@ -414,13 +496,13 @@ class Handler(BaseHTTPRequestHandler):
         m = re.fullmatch(r'/api/proyectos/([\w-]+)', ruta)
         if m and metodo == 'PATCH':
             slug = m.group(1)
-            p = proyectos.leer(slug)
             d = self._leer_json()
-            for k in ('titulo', 'agente', 'modelo', 'esfuerzo', 'permisos', 'ritmo', 'formato'):
-                if k in d:
-                    p[k] = d[k]
-            proyectos.guardar(slug, p)
-            return self._json(p)
+
+            def aplicar(p):
+                for k in ('titulo', 'agente', 'modelo', 'esfuerzo', 'permisos', 'ritmo', 'formato'):
+                    if k in d:
+                        p[k] = d[k]
+            return self._json(proyectos.modificar(slug, aplicar))
         m = re.fullmatch(r'/api/proyectos/([\w-]+)/chat', ruta)
         if m and metodo == 'POST':
             slug = m.group(1)
@@ -433,18 +515,43 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError('Adjunto no válido: %s' % rel)
                 rel = os.path.relpath(p, rutas.REPO).replace('\\', '/')
                 adjuntos.append({'nombre': os.path.basename(p), 'ruta': rel, 'tipo': tipo(p), 'url': url_archivo(rel)})
+            if not proyectos.existe(slug):
+                return self._error(404, 'No existe el proyecto')
+            carril = d.get('carril') or chat.PRINCIPAL
+            if carril != chat.PRINCIPAL:
+                if carril not in proyectos.IDS_FASE:
+                    raise ValueError('Carril desconocido')
+                p = proyectos.leer(slug)
+                puede, motivo = proyectos.puede_paralelo(p, carril)
+                if not puede:
+                    raise ValueError('No se puede trabajar «%s» en paralelo: %s.' % (carril, motivo))
+                if not texto and not adjuntos:
+                    texto = mensaje_carril(p, carril)
             if not texto and not adjuntos:
                 raise ValueError('Mensaje vacío')
             if not texto:
                 texto = 'Te adjunto estos ficheros.'
+            r = chat.obtener(slug, carril).enviar(texto, adjuntos)
+            return self._json({'ok': True, 'cola': r == 'cola'}, 202)
+        m = re.fullmatch(r'/api/proyectos/([\w-]+)/cambio', ruta)
+        if m and metodo == 'POST':
+            slug = m.group(1)
             if not proyectos.existe(slug):
                 return self._error(404, 'No existe el proyecto')
-            if not chat.obtener(slug).enviar(texto, adjuntos):
-                return self._error(409, 'El agente sigue trabajando. Espera o pulsa «Parar».')
-            return self._json({'ok': True}, 202)
+            d = self._leer_json()
+            c = proyectos.pedir_cambio(slug, d.get('texto'), d.get('objetivos') or [], d.get('afectadas') or [])
+            texto = '✎ Cambio #%d: %s' % (c['id'], c['texto'])
+            r = chat.obtener(slug).enviar(texto, None, instrucciones_cambio(slug, c))
+            return self._json(dict(c, en_cola=r == 'cola'), 201)
+        m = re.fullmatch(r'/api/proyectos/([\w-]+)/cambio/(\d+)', ruta)
+        if m and metodo == 'PATCH':
+            d = self._leer_json()
+            proyectos.cambio_estado(m.group(1), int(m.group(2)), d.get('estado'), d.get('nota'))
+            return self._json({'ok': True})
         m = re.fullmatch(r'/api/proyectos/([\w-]+)/parar', ruta)
         if m and metodo == 'POST':
-            chat.obtener(m.group(1)).parar()
+            carril = q.get('carril') or chat.PRINCIPAL
+            chat.obtener(m.group(1), carril).parar()
             return self._json({'ok': True})
         m = re.fullmatch(r'/api/proyectos/([\w-]+)/fase', ruta)
         if m and metodo == 'POST':
