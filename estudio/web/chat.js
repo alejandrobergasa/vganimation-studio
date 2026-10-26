@@ -16,13 +16,17 @@ function crearHilo(slug, carril, cb) {
   const el = h('div', { class: 'mensajes', 'data-carril': carril });
   const trabajando = h('div', { class: 'trabajando', hidden: true }, spinner(), h('span', {}, 'Trabajando…'), h('span', { class: 't-seg' }));
   const colaEl = h('div', { class: 'cola' });
-  el.append(trabajando, colaEl);
+  let vacio = h('div', { class: 'chat-vacio' }, h('span', { class: 'gran' }, carril === 'principal' ? '💬' : '⇉'),
+    carril === 'principal'
+      ? 'Aquí hablas con el agente: cuéntale la idea, pide cambios o adjunta fotos y vídeos de referencia (📎, arrastrar o pegar). Lo que apruebes en el mapa también llega aquí.'
+      : 'Este agente trabaja solo su fase, en paralelo. Sus mensajes aparecerán aquí.');
+  el.append(vacio, trabajando, colaEl);
 
   let ocupado = false, t0 = null, ultimoUsuario = null, proximo = 0, cerrado = false, es = null, temporizador = null;
   let vivo = null, grupo = null, pintandoVivo = false;
   const filas = {};
 
-  const ins = n => el.insertBefore(n, trabajando);
+  const ins = n => { if (vacio) { vacio.remove(); vacio = null; } el.insertBefore(n, trabajando); };
   const cerca = () => el.scrollHeight - el.scrollTop - el.clientHeight < 100;
   const abajo = () => requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
 

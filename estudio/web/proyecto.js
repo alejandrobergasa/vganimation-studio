@@ -185,7 +185,7 @@ async function pantallaProyecto(slug) {
     const nCambios = pendientes.filter(c => c.fases_marcadas.includes(f.id) || c.objetivos.some(o => o.tipo === 'fase' && o.id === f.id)).length;
     const esSel = st.sel.tipo === 'fase' && st.sel.id === f.id;
     return h('div', { class: 'nodo est-' + f.estado + (esSel ? ' sel' : ''), 'data-fase': f.id },
-      h('div', { class: 'nodo-cab', onclick: () => seleccionar('fase', f.id) },
+      h('div', { class: 'nodo-cab', title: f.nombre, onclick: () => seleccionar('fase', f.id) },
         iconoEstado(f.estado), h('span', { class: 'nodo-ico' }, ICONO_FASE[f.id]), h('b', {}, f.nombre),
         carril && carril.ocupado ? h('span', { class: 'tag par', title: 'Un agente aparte está trabajando en esta fase' }, '⇉ aparte') : null,
         nCambios ? h('span', { class: 'tag cambio', title: nCambios + ' cambio(s) pendiente(s)' }, '✎ ' + nCambios) : null),
@@ -201,12 +201,13 @@ async function pantallaProyecto(slug) {
     const columnas = [];
     vp.fases.forEach(f => { (columnas[niv[f.id]] = columnas[niv[f.id]] || []).push(f); });
     mapaInt.replaceChildren(cables, h('div', { class: 'capas' }, columnas.map(fs => h('div', { class: 'capa' }, fs.map(f => nodoFase(f, pendientes))))));
+    ajustarMapa();
     requestAnimationFrame(() => {
       pintarCables();
       const n = mapaInt.querySelector(st.sel.tipo === 'fase' ? '[data-fase="' + st.sel.id + '"]' : '[data-el="' + st.sel.id + '"]');
       if (n) {                                     // el nodo seleccionado a la vista, sin mover la página
         const r = n.getBoundingClientRect(), m = mapaEl.getBoundingClientRect();
-        if (r.left < m.left || r.right > m.right) mapaEl.scrollLeft += (r.left + r.right) / 2 - (m.left + m.right) / 2;
+        if (mapaEl.scrollWidth > mapaEl.clientWidth + 2 && (r.left < m.left || r.right > m.right)) mapaEl.scrollLeft += (r.left + r.right) / 2 - (m.left + m.right) / 2;
       }
     });
   }
@@ -248,7 +249,17 @@ async function pantallaProyecto(slug) {
     }
     cables.replaceChildren(...caminos);
   }
-  new ResizeObserver(() => requestAnimationFrame(pintarCables)).observe(mapaEl);
+  // El mapa se ajusta al ancho disponible: los nodos se estrechan (hasta un mínimo) para que se vea entero sin desplazarse.
+  function ajustarMapa() {
+    const capas = mapaInt.querySelector('.capas');
+    if (!capas) return;
+    const n = capas.children.length, hueco = 20;
+    const w = Math.max(118, Math.min(200, Math.floor((mapaEl.clientWidth - 6 - hueco * (n - 1)) / n)));
+    mapaInt.style.setProperty('--nodo-w', w + 'px');
+    mapaInt.style.setProperty('--hueco', hueco + 'px');
+    mapaInt.classList.toggle('compacto', w < 150);
+  }
+  new ResizeObserver(() => { ajustarMapa(); requestAnimationFrame(pintarCables); }).observe(mapaEl);
 
   function pintarTareas() {
     tareasEl.replaceChildren(...vp.tareas.map(t => h('div', { class: 'tarea' }, spinner(), h('b', {}, t.etiqueta),
