@@ -401,11 +401,20 @@ class Handler(BaseHTTPRequestHandler):
             slug = m.group(1)
             d = self._leer_json()
             texto = (d.get('texto') or '').strip()
-            if not texto:
+            adjuntos = []
+            for rel in d.get('adjuntos') or []:
+                p = ruta_permitida(rel)
+                if not p or not p.startswith(os.path.realpath(rutas.ENTRADA) + os.sep) or not os.path.isfile(p):
+                    raise ValueError('Adjunto no válido: %s' % rel)
+                rel = os.path.relpath(p, rutas.REPO).replace('\\', '/')
+                adjuntos.append({'nombre': os.path.basename(p), 'ruta': rel, 'tipo': tipo(p), 'url': url_archivo(rel)})
+            if not texto and not adjuntos:
                 raise ValueError('Mensaje vacío')
+            if not texto:
+                texto = 'Te adjunto estos ficheros.'
             if not proyectos.existe(slug):
                 return self._error(404, 'No existe el proyecto')
-            if not chat.obtener(slug).enviar(texto):
+            if not chat.obtener(slug).enviar(texto, adjuntos):
                 return self._error(409, 'El agente sigue trabajando. Espera o pulsa «Parar».')
             return self._json({'ok': True}, 202)
         m = re.fullmatch(r'/api/proyectos/([\w-]+)/parar', ruta)
@@ -465,7 +474,7 @@ class Handler(BaseHTTPRequestHandler):
                 f.write(b)
                 resto -= len(b)
         rel = os.path.relpath(p, rutas.REPO).replace('\\', '/')
-        return self._json({'ruta': rel, 'nombre': os.path.basename(p)}, 201)
+        return self._json({'ruta': rel, 'nombre': os.path.basename(p), 'tipo': tipo(p), 'url': url_archivo(rel), 'tam': os.path.getsize(p)}, 201)
 
     def _extraer(self, juego, rapido):
         if juego not in rutas.juegos():

@@ -135,3 +135,19 @@ def test_servidor_proyecto(servidor):
     cod, _ = _pedir(servidor + '/api/entrada?nombre=..%2F..%2Fmal.txt&proyecto=' + slug, 'POST', None, {'X-Estudio': '1'})
     assert cod in (201, 400)
     assert not os.path.exists(os.path.join(rutas.ENTRADA, '..', 'mal.txt'))
+
+
+def test_adjuntos_en_el_mensaje():
+    from estudio.chat import con_adjuntos
+    assert con_adjuntos('hola', None) == 'hola'
+    t = con_adjuntos('mira', [{'ruta': 'entrada/x/a.mp4', 'tipo': 'video'}, {'ruta': 'entrada/x/b.png', 'tipo': 'imagen'}])
+    assert 'entrada/x/a.mp4' in t and 'revisar hoja' in t and 'entrada/x/b.png' in t
+
+
+def test_servidor_rechaza_adjuntos_fuera_de_entrada(servidor):
+    cab = {'X-Estudio': '1', 'Content-Type': 'application/json'}
+    _, cuerpo = _pedir(servidor + '/api/proyectos', 'POST', {'titulo': 'Adj', 'juego': 'nsmb', 'agente': 'claude'}, cab)
+    slug = json.loads(cuerpo)['slug']
+    for ruta in ('AGENTS.md', 'roms/LEEME.md', '../../etc/passwd', 'entrada/no_existe.png'):
+        cod, _ = _pedir(servidor + '/api/proyectos/%s/chat' % slug, 'POST', {'texto': 'x', 'adjuntos': [ruta]}, cab)
+        assert cod == 400, ruta

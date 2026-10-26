@@ -34,6 +34,8 @@ mensaje (el id se guarda en `.estudio/chats/`, que no se versiona). Por eso el a
 en los ficheros del proyecto, no en la conversación. **Escribe las decisiones en `brief.md`/`guion.md`/`storyboard.md`.**
 
 ## Entradas y salidas
+- Lo que el usuario adjunta en el chat del estudio llega al agente como lista de rutas bajo el mensaje («Ficheros adjuntos por el usuario»), ya guardado en `entrada/<slug>/`.
+  Imágenes: ábrelas con la herramienta de lectura de imágenes. Vídeos: `python valedores.py revisar hoja <ruta>` (y `revisar audio`).
 - Lo que el usuario deja en `entrada/` se lee, no se modifica. Si se reutiliza → `biblioteca/<juego>/personalizados/`.
 - El vídeo final va a `salida/<slug>/`. Con varias versiones, `<nombre>_v2.mp4`: no se borra la anterior sin decirlo.
 - Temporales (fotogramas de revisión, audio intermedio, caché de render) → `proyectos/<slug>/trabajo/` (ignorado por Git).

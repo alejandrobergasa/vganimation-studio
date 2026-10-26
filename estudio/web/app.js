@@ -37,6 +37,23 @@ async function api(ruta, opts = {}) {
   return d;
 }
 
+// Sube un fichero a entrada/ (o entrada/<proyecto>/) con progreso. Devuelve {ruta, nombre, tipo, url, tam}.
+function subirFichero(file, slug, progreso) {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open('POST', '/api/entrada?nombre=' + encodeURIComponent(file.name) + (slug ? '&proyecto=' + slug : ''));
+    x.setRequestHeader('X-Estudio', '1');
+    x.upload.onprogress = e => { if (e.lengthComputable && progreso) progreso(e.loaded / e.total); };
+    x.onload = () => {
+      let d = null;
+      try { d = JSON.parse(x.responseText); } catch (e) { /* sin cuerpo */ }
+      if (x.status >= 200 && x.status < 300) resolve(d); else reject(new Error((d && d.error) || ('Error ' + x.status)));
+    };
+    x.onerror = () => reject(new Error('No se pudo subir ' + file.name));
+    x.send(file);
+  });
+}
+
 function tamano(n) {
   if (n > 1 << 30) return (n / (1 << 30)).toFixed(1) + ' GB';
   if (n > 1 << 20) return (n / (1 << 20)).toFixed(1) + ' MB';
@@ -230,8 +247,13 @@ async function pantallaProyecto(slug) {
     ['Previsualización', 'Genera la previsualización (fotogramas clave) y párate.'],
     ['Todo de una', 'Hazlo todo seguido hasta el vídeo final y la revisión, y enséñame solo el resultado.'],
   ].map(([t, m]) => h('button', { onclick: () => enviar(m) }, t)));
+  const chips = h('div', { class: 'chips' });
+  const selectorFicheros = h('input', { type: 'file', multiple: true, hidden: true });
+  const btnClip = h('button', { class: 'clip', title: 'Adjuntar fotos, vídeos, audios o assets', onclick: () => selectorFicheros.click() }, '📎 Adjuntar');
+  const velo = h('div', { class: 'velo', hidden: true }, 'Suelta los ficheros para adjuntarlos');
   const colCentro = h('div', { class: 'col chat' }, mensajes,
-    h('div', { class: 'compositor' }, rapidos, texto, h('div', { class: 'pie' }, btnEnviar, btnParar, estadoTxt)));
+    h('div', { class: 'compositor' }, rapidos, chips, texto,
+      h('div', { class: 'pie' }, btnEnviar, btnClip, btnParar, estadoTxt, selectorFicheros)), velo);
   const colDer = h('div', { class: 'col der' });
   $vista.replaceChildren(h('div', { class: 'proyecto' }, colIzq, colCentro, colDer));
 
@@ -245,7 +267,13 @@ async function pantallaProyecto(slug) {
   }
   function pintar(ev) {
     switch (ev.t) {
-      case 'usuario': mensajes.append(h('div', { class: 'msg usuario' }, ev.texto)); break;
+      case 'usuario':
+        mensajes.append(h('div', { class: 'msg usuario' }, ev.texto,
+          ev.adjuntos && ev.adjuntos.length ? h('div', { class: 'adjs' }, ev.adjuntos.map(a =>
+            a.tipo === 'imagen' ? h('img', { src: a.url, title: a.nombre, onclick: () => ampliar(a.url) })
+              : a.tipo === 'video' ? h('video', { src: a.url, controls: true, preload: 'metadata' })
+                : h('a', { href: a.url, target: '_blank', class: 'adj' }, (a.tipo === 'audio' ? '🎵 ' : '📄 ') + a.nombre))) : null));
+        break;
       case 'delta':
         if (!vivo) { vivo = h('div', { class: 'msg agente' }); mensajes.append(vivo); }
         vivo.append(document.createTextNode(ev.texto)); break;
@@ -270,12 +298,50 @@ async function pantallaProyecto(slug) {
     abajo();
   }
 
+  // ---- adjuntos: se suben a entrada/<slug>/ nada más elegirlos y viajan con el siguiente mensaje
+  const adjuntos = [];
+  function pintarChips() {
+    chips.replaceChildren(...adjuntos.map(a => h('div', { class: 'chip' + (a.error ? ' error' : '') },
+      a.tipo === 'imagen' && a.url ? h('img', { src: a.url }) : h('span', { class: 'ico' }, { video: '🎬', audio: '🎵' }[a.tipo] || '📄'),
+      h('span', { class: 'nom', title: a.error || a.nombre }, a.error ? a.error : a.nombre),
+      a.url || a.error ? null : h('span', { class: 'prog' }, Math.round((a.progreso || 0) * 100) + '%'),
+      h('button', { class: 'x', title: 'Quitar', onclick: () => { adjuntos.splice(adjuntos.indexOf(a), 1); pintarChips(); } }, '×'))));
+  }
+  function adjuntar(files) {
+    for (const f of files) {
+      if (!f.name) continue;
+      const a = { nombre: f.name, tipo: 'otro', progreso: 0 };
+      adjuntos.push(a); pintarChips();
+      subirFichero(f, slug, p => { a.progreso = p; pintarChips(); })
+        .then(d => { Object.assign(a, d); pintarChips(); pend(); })
+        .catch(e => {
+          a.error = e.message; pintarChips();
+          setTimeout(() => { const i = adjuntos.indexOf(a); if (i >= 0) { adjuntos.splice(i, 1); pintarChips(); } }, 4000);
+        });
+    }
+  }
+  selectorFicheros.addEventListener('change', () => { adjuntar([...selectorFicheros.files]); selectorFicheros.value = ''; });
+  let arrastres = 0;
+  colCentro.addEventListener('dragenter', e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); arrastres++; velo.hidden = false; } });
+  colCentro.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
+  colCentro.addEventListener('dragleave', () => { if (--arrastres <= 0) { arrastres = 0; velo.hidden = true; } });
+  colCentro.addEventListener('drop', e => { e.preventDefault(); arrastres = 0; velo.hidden = true; adjuntar([...e.dataTransfer.files]); });
+  texto.addEventListener('paste', e => {
+    const fs = [...(e.clipboardData ? e.clipboardData.files : [])];
+    if (!fs.length) return;
+    e.preventDefault();
+    adjuntar(fs.map(f => (f.name && f.name !== 'image.png') ? f : new File([f], 'captura_' + Date.now() + '.png', { type: f.type })));
+  });
+
   async function enviar(msg) {
     const t = (msg || texto.value).trim();
-    if (!t || ocupado) return;
-    if (!msg) texto.value = '';
-    try { await api('/api/proyectos/' + slug + '/chat', { metodo: 'POST', json: { texto: t } }); }
-    catch (e) { avisar(e.message, 4500); }
+    const listos = msg ? [] : adjuntos.filter(a => a.url);
+    if ((!t && !listos.length) || ocupado) return;
+    if (!msg && adjuntos.some(a => !a.url && !a.error)) { avisar('Espera a que terminen de subirse los adjuntos.'); return; }
+    try {
+      await api('/api/proyectos/' + slug + '/chat', { metodo: 'POST', json: { texto: t, adjuntos: listos.map(a => a.ruta) } });
+      if (!msg) { texto.value = ''; adjuntos.length = 0; pintarChips(); }
+    } catch (e) { avisar(e.message, 4500); }
   }
   texto.addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); enviar(); } });
 
@@ -377,7 +443,7 @@ function subidor(slug, tras) {
     for (const f of files) {
       try {
         zona.firstChild.textContent = 'Subiendo ' + f.name + '…';
-        await api('/api/entrada?nombre=' + encodeURIComponent(f.name) + (slug ? '&proyecto=' + slug : ''), { metodo: 'POST', body: f });
+        await subirFichero(f, slug, p => { zona.firstChild.textContent = 'Subiendo ' + f.name + ' ' + Math.round(p * 100) + '%'; });
       } catch (e) { avisar(e.message, 4500); }
     }
     zona.firstChild.textContent = 'Arrastra aquí fotos, vídeos, audios…';

@@ -11,6 +11,24 @@ from . import agentes
 ESTADO = os.path.join(rutas.REPO, '.estudio', 'chats')
 
 
+PISTAS = {
+    'imagen': 'ábrela con la herramienta de lectura de imágenes',
+    'video': 'mira sus fotogramas con `python valedores.py revisar hoja <ruta>` (y `revisar audio` para el sonido)',
+    'audio': 'analízalo con `python valedores.py revisar audio <ruta>`',
+}
+
+
+def con_adjuntos(texto, adjuntos):
+    """Texto que recibe el agente: el mensaje más la lista de ficheros que el usuario ha adjuntado."""
+    if not adjuntos:
+        return texto
+    lineas = ['', '', 'Ficheros adjuntos por el usuario (están en `entrada/`, no los modifiques):']
+    for a in adjuntos:
+        pista = PISTAS.get(a['tipo'])
+        lineas.append('- `%s`%s' % (a['ruta'], ' (%s: %s)' % (a['tipo'], pista) if pista else ''))
+    return texto + '\n'.join(lineas)
+
+
 class Chat:
     def __init__(self, slug):
         self.slug = slug
@@ -68,16 +86,19 @@ class Chat:
             json.dump(self.sesiones, f)
 
     # ---- turnos
-    def enviar(self, texto):
-        """Lanza un turno. Devuelve False si el agente sigue ocupado."""
+    def enviar(self, texto, adjuntos=None):
+        """Lanza un turno. `adjuntos`: [{nombre, ruta, tipo, url}] ya subidos a `entrada/`. Devuelve False si el agente sigue ocupado."""
         with self.lock:
             if self.ocupado:
                 return False
             self.ocupado = True
             self.parado = False
-        self.emitir({'t': 'usuario', 'texto': texto})
+        ev = {'t': 'usuario', 'texto': texto}
+        if adjuntos:
+            ev['adjuntos'] = adjuntos
+        self.emitir(ev)
         self.emitir({'t': 'estado', 'estado': 'trabajando'}, persistir=False)
-        threading.Thread(target=self._turno, args=(texto,), daemon=True).start()
+        threading.Thread(target=self._turno, args=(con_adjuntos(texto, adjuntos),), daemon=True).start()
         return True
 
     def _turno(self, texto, reintento=False):

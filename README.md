@@ -31,7 +31,9 @@ Una página local (`127.0.0.1`, sin dependencias externas):
   («solo el guion», «solo la música»…).
 - **Fases** (idea → guion → música → storyboard → previsualización → render → revisión): cada una enseña su resultado
   (texto, audio de muestra, fotogramas, vídeo) con botones *Aprobar* / *Pedir cambios*.
-- **Entrada y salida**: arrastra fotos, vídeos o audios para la IA; mira los vídeos resultado.
+- **Adjuntos en el chat**: botón 📎, arrastrar ficheros sobre el chat o pegar una captura. Se guardan en `entrada/<proyecto>/` y el agente recibe
+  sus rutas (fotos, vídeos de referencia, audios, assets).
+- **Entrada y salida**: todo lo subido y los vídeos resultado.
 
 ## Carpetas
 
