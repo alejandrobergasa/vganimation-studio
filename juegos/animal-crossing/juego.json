@@ -1,0 +1,50 @@
+{
+  "id": "animal-crossing",
+  "nombre": "Animal Crossing: Wild World",
+  "corto": "Animal Crossing",
+  "plataforma": "Nintendo DS",
+  "descripcion": "Pueblo, vecinos y Tom Nook en 3D de baja resolución: modelos, animaciones, fuente, música y voces de la ROM. Pensado para vídeos explicativos y parodias con gráficos de datos.",
+  "rom": {
+    "codigos": [
+      "ADMP"
+    ],
+    "region": "Europa",
+    "ejemplo": "Animal Crossing - Wild World.nds"
+  },
+  "extractor": {
+    "comando": [
+      "tools/extraer.py",
+      "--rom",
+      "{rom}",
+      "--salida",
+      "{extraidos}"
+    ],
+    "rapido": [
+      "--rapido"
+    ],
+    "duracion_aprox": "unos 10 min (el audio es lo más lento)",
+    "fases": {
+      "flag": "--fase",
+      "valores": [
+        "2d",
+        "texturas",
+        "modelos",
+        "audio"
+      ]
+    }
+  },
+  "formatos": [
+    {
+      "id": "vertical",
+      "nombre": "Vertical 1080x1920 (móvil)",
+      "skill": "cinematica-animal-crossing-movil"
+    },
+    {
+      "id": "horizontal",
+      "nombre": "Horizontal 1280x720",
+      "skill": "cinematica-animal-crossing"
+    }
+  ],
+  "motor": "video/",
+  "vistas": []
+}

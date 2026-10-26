@@ -1,0 +1,11 @@
+# Textura facial
+
+cara.png: cabeza pixelada de Pedro Sánchez generada con la herramienta integrada imagegen. Excepción externa solicitada por el usuario. El motor la muestrea a 128×128 para aplicarla en 3D. El resto de assets procede de la ROM; las voces usan sílabas Animal Crossing.
+
+Prompt completo: Use case: stylized-concept. Asset type: face texture sprite for a satirical Animal Crossing Nintendo DS video. Create a clearly recognizable face of Spanish politician Pedro Sánchez, straight-on front view, dark short neatly combed hair, prominent eyebrows, long face, clean shaven, neutral worried expression. ONLY a single cutout head including ears and hair, no neck, no torso, no background, no text. Crisp low-resolution pixel art in the Nintendo DS / Animal Crossing Wild World aesthetic, restrained realistic caricature likeness, flat evenly lit face, symmetrical forward-facing. Fill most of a square canvas, centered with a small transparent margin. Genuine transparent background. This texture will be applied over the head of a low-poly villager in an explicitly marked parody.
+
+## Versión 2: fotografía del usuario
+
+El original ../psan.jpg se conserva sin modificar. cara_foto.png es el recorte RGBA preparado mediante la herramienta integrada imagegen. El render lo muestrea a 64×64 y lo proyecta sobre los triángulos de la cabeza del osezno cbr01 de la ROM. La v2 no usa la cara dibujada de v1.
+
+Prompt completo v2: Edit target: provided real photograph biblioteca/animal-crossing/personalizados/psan.jpg of Pedro Sánchez. Task: prepare a photographic FACE TEXTURE for an existing round-head 3D Animal Crossing villager. Preserve the exact face, identity, eyes, nose, mouth, expression and photographic appearance from the supplied image. Do NOT illustrate, paint, caricature, beautify, invent a new face, or turn him into pixel art. Remove background, neck, shirt, suit and tie completely. Keep only the front-facing head including the exact hair and ears, on a genuine transparent background. Center the isolated head, fairly tight square crop, small equal transparent padding around hair/ears/chin. Evenly lit. No text, no additional objects. Downscaling and projection onto the round 3D surface will be handled by the game renderer afterwards.

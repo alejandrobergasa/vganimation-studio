@@ -1,0 +1,6 @@
+# Solo para analizar audio/vídeo de referencia (transcribir, separar pistas, sacar notas)
+-r requirements.txt
+soundfile>=0.12
+librosa>=0.10
+faster-whisper>=1.0
+demucs>=4.0

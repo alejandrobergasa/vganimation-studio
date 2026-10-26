@@ -1,0 +1,55 @@
+# --- Material con copyright y datos regenerables: nunca al repositorio ---
+# ROMs (cada persona pone las suyas; se reconocen por su cabecera)
+roms/*
+!roms/LEEME.md
+*.nds
+*.nsp
+*.xci
+*.gba
+*.sfc
+*.smc
+
+# Bandeja de entrada y de salida: solo se versiona su LEEME.
+entrada/*
+!entrada/LEEME.md
+salida/*
+!salida/LEEME.md
+
+# Assets extraídos de la ROM (se regeneran con `python valedores.py extraer`)
+biblioteca/*/extraidos/
+
+# Temporales, audio renderizado y fotogramas de revisión
+.cache/
+**/trabajo/
+proyectos/*/trabajo/
+
+# Vídeos y audio de resultado en cualquier sitio
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.m4v
+*.MP4
+*.MOV
+
+# Estado local del estudio (sesiones de chat, configuración personal)
+.estudio/
+estudio/estado/
+
+# Python / editor / sistema
+__pycache__/
+*.pyc
+.venv/
+venv/
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini
+*.log
+
+# Fotos de personas reales: no se versionan (privacidad). Cada uno pone las suyas en biblioteca/<juego>/personalizados/ o entrada/.
+biblioteca/animal-crossing/personalizados/psan.jpg
+biblioteca/animal-crossing/personalizados/pedro/cara_foto.png
+biblioteca/mkds/personalizados/abalos.jpg
+biblioteca/nsmb/personalizados/oscarpuente.jfif

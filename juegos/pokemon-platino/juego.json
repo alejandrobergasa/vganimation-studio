@@ -1,0 +1,41 @@
+{
+  "id": "pokemon-platino",
+  "nombre": "Pokémon Platino",
+  "corto": "Pokémon Platino",
+  "plataforma": "Nintendo DS",
+  "descripcion": "Mapas reales de Sinnoh, sprites de personajes y Pokémon, ventanas de diálogo con la fuente del juego y personajes propios en estilo Platino (a partir de fotos). Para cinemáticas animadas 2D.",
+  "rom": {
+    "codigos": [
+      "CPUS",
+      "CPUE",
+      "CPUP",
+      "CPUD",
+      "CPUF",
+      "CPUI",
+      "CPUJ",
+      "CPUK"
+    ],
+    "region": "Español y otras",
+    "ejemplo": "Pokemon Edicion Platino (S).nds"
+  },
+  "extractor": {
+    "comandos": [
+      [
+        "tools/extract.py",
+        "{rom}",
+        "{extraidos}"
+      ]
+    ],
+    "rapido": null,
+    "duracion_aprox": "unos minutos"
+  },
+  "formatos": [
+    {
+      "id": "horizontal",
+      "nombre": "Pantalla DS 256x192 (GIF + MP4)",
+      "skill": "cinematica-pokemon"
+    }
+  ],
+  "motor": "cinematicas/",
+  "vistas": []
+}

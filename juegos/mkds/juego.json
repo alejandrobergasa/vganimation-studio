@@ -1,0 +1,35 @@
+{
+  "id": "mkds",
+  "nombre": "Mario Kart DS",
+  "corto": "Mario Kart DS",
+  "plataforma": "Nintendo DS",
+  "descripcion": "Karts, pilotos animados y circuitos en 3D con partículas, postproceso y música de la ROM. Para cinemáticas verticales de carreras para redes sociales.",
+  "rom": {
+    "codigos": [
+      "AMCP"
+    ],
+    "region": "Europa",
+    "ejemplo": "Mario Kart DS (Europe).nds"
+  },
+  "depende": [
+    "nsmb"
+  ],
+  "extractor": {
+    "comandos": [
+      [
+        "tools/extraer_mkds.py"
+      ]
+    ],
+    "rapido": null,
+    "duracion_aprox": "1-2 min (hojas de contactos y catálogos; los modelos se leen de la ROM al vuelo)"
+  },
+  "formatos": [
+    {
+      "id": "vertical",
+      "nombre": "Vertical 1080x1920 (móvil)",
+      "skill": "cinematica-mkds"
+    }
+  ],
+  "motor": "video/",
+  "vistas": []
+}

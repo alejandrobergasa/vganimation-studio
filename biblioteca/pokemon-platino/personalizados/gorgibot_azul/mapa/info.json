@@ -1,0 +1,9 @@
+{
+ "nombre": "GORGIBOT",
+ "tam_frame": [
+  32,
+  32
+ ],
+ "base": "santos",
+ "frames": "0-3 arriba, 4-7 abajo, 8-11 izquierda, 12-15 derecha [quieto, paso, quieto, paso]"
+}

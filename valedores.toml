@@ -1,0 +1,2 @@
+# Marca la raíz del repositorio (los scripts de los juegos la buscan hacia arriba desde su ubicación).
+nombre = "valedores-studio"

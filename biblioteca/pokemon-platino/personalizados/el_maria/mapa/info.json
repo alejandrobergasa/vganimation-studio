@@ -1,0 +1,9 @@
+{
+ "nombre": "EL MARÍA",
+ "tam_frame": [
+  32,
+  32
+ ],
+ "base": "008_man1",
+ "frames": "0-3 arriba, 4-7 abajo, 8-11 izquierda, 12-15 derecha [quieto, paso, quieto, paso]"
+}

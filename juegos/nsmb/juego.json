@@ -1,0 +1,44 @@
+{
+  "id": "nsmb",
+  "nombre": "New Super Mario Bros.",
+  "corto": "NSMB",
+  "plataforma": "Nintendo DS",
+  "descripcion": "Mario y Luigi en 2D con fondos, niveles, enemigos, fuente y banda sonora originales. Ideal para cortos verticales, parodias y escenas con diálogo estilo plataformas.",
+  "rom": {
+    "codigos": [
+      "A2DP"
+    ],
+    "region": "Europa (español)",
+    "ejemplo": "New Super Mario Bros (ESPAÑOL).nds"
+  },
+  "extractor": {
+    "comandos": [
+      [
+        "tools/extraer_todo.py"
+      ],
+      [
+        "tools/extraer_casino.py"
+      ]
+    ],
+    "rapido": null,
+    "duracion_aprox": "unos 5 min con audio (--sin-audio para ir más rápido)",
+    "opciones": [
+      "--sin-audio",
+      "--solo modelos,jugadores,fondos,tilesets,fuentes,niveles,audio"
+    ]
+  },
+  "formatos": [
+    {
+      "id": "vertical",
+      "nombre": "Vertical 1080x1920 (móvil)",
+      "skill": "cinematica-nsmb"
+    },
+    {
+      "id": "horizontal",
+      "nombre": "Horizontal 768x576",
+      "skill": "cinematica-nsmb"
+    }
+  ],
+  "motor": "video/",
+  "vistas": []
+}

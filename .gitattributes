@@ -1,0 +1,8 @@
+* text=auto
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.jfif binary
+*.gif binary
+*.wav binary
+*.nds binary
