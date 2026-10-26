@@ -183,12 +183,21 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             return {}
 
+    def _rechazar(self, codigo, msg):
+        """Responde un error sin haber leído el cuerpo: lo descarta (o cierra la conexión si es enorme) para no provocar un reset."""
+        n = int(self.headers.get('Content-Length') or 0)
+        if n > (1 << 20):
+            self.close_connection = True
+        else:
+            self.rfile.read(n)
+        self._error(codigo, msg)
+
     def _entrar(self, escritura):
         if not self._host_ok():
-            self._error(403, 'Host no permitido')
+            self._rechazar(403, 'Host no permitido')
             return None
         if escritura and self.headers.get('X-Estudio') != '1':
-            self._error(403, 'Falta X-Estudio')
+            self._rechazar(403, 'Falta X-Estudio')
             return None
         u = urlparse(self.path)
         return u.path, {k: v[0] for k, v in parse_qs(u.query).items()}
@@ -475,7 +484,7 @@ class Handler(BaseHTTPRequestHandler):
         os.makedirs(destino, exist_ok=True)
         n = int(self.headers.get('Content-Length') or 0)
         if n > MAX_SUBIDA:
-            return self._error(413, 'Fichero demasiado grande')
+            return self._rechazar(413, 'Fichero demasiado grande')
         base, ext = os.path.splitext(nombre)
         p, i = os.path.join(destino, nombre), 2
         while os.path.exists(p):
