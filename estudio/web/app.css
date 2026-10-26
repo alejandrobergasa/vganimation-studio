@@ -15,7 +15,7 @@ a { color: var(--acento); text-decoration: none; }
 .barra nav { display: flex; gap: 4px; }
 .barra nav a { color: var(--suave); padding: 6px 12px; border-radius: 8px; }
 .barra nav a.activo, .barra nav a:hover { background: var(--panel2); color: var(--texto); }
-main { flex: 1; min-height: 0; overflow: auto; }
+main { flex: 1; min-height: 0; overflow: auto; position: relative; }
 .pagina { max-width: 1180px; margin: 0 auto; padding: 24px 20px 60px; }
 h1 { font-size: 24px; margin: 0 0 4px; }
 h2 { font-size: 17px; margin: 24px 0 10px; }
@@ -57,7 +57,7 @@ label { display: block; font-size: 13px; color: var(--suave); margin: 12px 0 4px
 .item .grow { flex: 1; min-width: 0; }
 
 /* proyecto: tres columnas */
-.proyecto { display: grid; grid-template-columns: 270px minmax(0, 1fr) 340px; height: 100%; min-height: 0; }
+.proyecto { display: grid; grid-template-columns: 270px minmax(0, 1fr) 340px; position: absolute; inset: 0; }
 .col { min-height: 0; overflow: auto; padding: 14px; }
 .col.izq { border-right: 1px solid var(--borde); background: var(--panel); }
 .col.der { border-left: 1px solid var(--borde); background: var(--panel); }
@@ -109,7 +109,8 @@ label { display: block; font-size: 13px; color: var(--suave); margin: 12px 0 4px
 .cuadricula .c video, .cuadricula .c img { width: 100%; aspect-ratio: 16/10; object-fit: cover; display: block; background: #000; }
 .cuadricula .c div { padding: 6px 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 1000px) {
-  .proyecto { grid-template-columns: 1fr; height: auto; }
+  .proyecto { grid-template-columns: 1fr; position: static; }
   .col.izq, .col.der { border: 0; }
   .col.chat { height: 80vh; }
 }
+.fila > .etiqueta, .fila > h3 { flex: none; min-width: 0; }

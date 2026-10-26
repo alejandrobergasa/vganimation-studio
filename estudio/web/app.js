@@ -279,9 +279,11 @@ async function pantallaProyecto(slug) {
   }
   texto.addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); enviar(); } });
 
-  const es = new EventSource('/api/proyectos/' + slug + '/eventos');
-  es.onmessage = m => pintar(JSON.parse(m.data));
-  limpiar.push(() => es.close());
+  if (!/[?&]nosse/.test(location.search)) {      // ?nosse: sin tiempo real (para capturas de pantalla automáticas)
+    const es = new EventSource('/api/proyectos/' + slug + '/eventos');
+    es.onmessage = m => pintar(JSON.parse(m.data));
+    limpiar.push(() => es.close());
+  }
 
   // ---- paneles
   async function refrescar() {
@@ -311,7 +313,7 @@ async function pantallaProyecto(slug) {
       h('label', {}, 'Ritmo'), selector(Object.entries(ESTADO.ritmos).map(([k, t]) => [k, t.split(':')[0]]), p.ritmo, v => guardar('ritmo', v)),
       h('label', {}, 'Permisos del agente'), selector(Object.entries(ESTADO.permisos).map(([k, t]) => [k, t.split(':')[0]]), p.permisos || 'normal', v => guardar('permisos', v)),
       h('h2', {}, 'Fases'),
-      vp.fases.map(f => h('div', { class: 'fase' + (f.id === faseSel ? ' actual' : ''), onclick: () => { faseSel = f.id; pintarIzq(); pintarDer(); } },
+      ...vp.fases.map(f => h('div', { class: 'fase' + (f.id === faseSel ? ' actual' : ''), onclick: () => { faseSel = f.id; pintarIzq(); pintarDer(); } },
         h('div', { class: 'n' }, f.nombre, h('span', { class: 'est ' + f.estado }, f.estado.replace('_', ' '))),
         h('div', { class: 'r' }, f.resumen))));
   }
@@ -359,7 +361,7 @@ async function pantallaProyecto(slug) {
     const otros = vp.entradas;
     colDer.replaceChildren(caja,
       h('h3', { style: 'font-size:15px' }, 'Tus ficheros de entrada'),
-      otros.length ? otros.map(e => h('div', { class: 'arch' }, h('a', { href: e.url, target: '_blank' }, e.nombre))) : h('p', { class: 'suave' }, 'Nada todavía.'),
+      ...(otros.length ? otros.map(e => h('div', { class: 'arch' }, h('a', { href: e.url, target: '_blank' }, e.nombre))) : [h('p', { class: 'suave' }, 'Nada todavía.')]),
       subidor(slug, pend));
   }
 
