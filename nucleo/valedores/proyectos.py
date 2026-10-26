@@ -89,6 +89,8 @@ def guardar(slug, p):
 
 def modificar(slug, fn):
     """Lee, aplica `fn(p)` y guarda con el cerrojo del proyecto. Devuelve el proyecto guardado."""
+    if not existe(slug):
+        raise ValueError('No existe el proyecto «%s».' % slug)
     with bloqueo.bloqueo(os.path.join(rutas.proyecto_dir(slug), '.proyecto.lock')):
         p = leer(slug)
         fn(p)

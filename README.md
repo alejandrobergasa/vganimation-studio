@@ -45,6 +45,12 @@ Una página local (`127.0.0.1`, sin dependencias externas):
   («solo el guion», «solo la música»…).
 - **Fases** (idea → guion → música → storyboard → previsualización → render → revisión): cada una enseña su resultado
   (texto, audio de muestra, fotogramas, vídeo) con botones *Aprobar* / *Pedir cambios*.
+- **Mapa del vídeo**: las fases como un grafo (música y storyboard en paralelo tras el guion) con los elementos de cada una (personajes, escenas,
+  voces…), indicadores de carga y barras de progreso con el tiempo estimado. El chat es un panel plegable a la derecha, con Markdown.
+- **Consumo**: tokens de entrada/salida y precio del proyecto siempre visibles en la cabecera, con desglose por fase (el precio lo informa Claude Code;
+  para Codex defínelo en `valedores.toml`, sección `[precios]`).
+- **Pedir cambios**: sobre cualquier fase o elemento y en cualquier momento; el estudio marca lo que hay que rehacer (y lo posterior afectado).
+- **Trabajo en paralelo**: «⇉ En paralelo» lanza un agente aparte para una fase que no dependa de las que están en marcha.
 - **Adjuntos en el chat**: botón 📎, arrastrar ficheros sobre el chat o pegar una captura. Se guardan en `entrada/<proyecto>/` y el agente recibe
   sus rutas (fotos, vídeos de referencia, audios, assets).
 - **Entrada y salida**: todo lo subido y los vídeos resultado.

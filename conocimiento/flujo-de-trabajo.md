@@ -26,6 +26,12 @@ El agente y el estudio no se hablan directamente: comparten este fichero.
 - El **estudio** lo muestra (línea de fases, ficheros de cada fase) y, con los botones de validar o pedir cambios, manda un mensaje
   al chat («✅ Fase guion aprobada» / «Cambios en la fase guion: …»). El agente cambia entonces el estado.
 - Estados: `pendiente`, `en_curso`, `validar` (esperando al usuario), `aprobada`, `cambios`, `omitida`.
+- **Elementos** (`valedores.py elemento`): cada concepto del vídeo (música, personaje, escena, voz…) colgado de una fase. El estudio los dibuja
+  en el mapa. **Cambios** (`valedores.py cambio`): peticiones del usuario sobre cualquier fase o elemento en cualquier momento; las fases afectadas
+  pasan a `cambios` y el agente las rehace en orden de dependencias. **Tiempos**: `--eta` en `fase`/`elemento`, y `valedores.py ejecutar` registra las
+  tareas largas (el estudio enseña barra de progreso con el tiempo previsto, aprendido de ejecuciones anteriores).
+- **Paralelo**: `musica` y `storyboard` solo dependen del `guion` y pueden llevarlas a la vez dos agentes (carriles). Cada uno trabaja solo su fase;
+  `proyecto.json` se escribe con un cerrojo para que no se pisen.
 
 ## Sesiones del agente
 El estudio lanza el agente elegido (Claude Code o Codex, con el modelo elegido) en la raíz del repo, con

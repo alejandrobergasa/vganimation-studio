@@ -57,7 +57,7 @@ async function pantallaProyecto(slug) {
   const hilosEl = h('div', { class: 'hilos' });
   const velo = h('div', { class: 'velo', hidden: true }, 'Suelta los ficheros para adjuntarlos');
   const chips = h('div', { class: 'chips' });
-  const texto = h('textarea', { rows: 1, placeholder: 'Escribe al agente… (Enter envía · Mayús+Enter salto de línea)' });
+  const texto = h('textarea', { rows: 1, placeholder: 'Escribe al agente… (Enter envía)' });
   const btnEnviar = h('button', { class: 'primario', onclick: () => enviar() }, 'Enviar');
   const btnParar = h('button', { class: 'peligro', hidden: true, onclick: () => api('/api/proyectos/' + slug + '/parar?carril=' + st.carril, { metodo: 'POST' }) }, 'Parar');
   const selectorFicheros = h('input', { type: 'file', multiple: true, hidden: true });
@@ -102,8 +102,9 @@ async function pantallaProyecto(slug) {
     titulo.textContent = p.titulo;
     const fmt = j && j.formatos.find(f => f.id === p.formato);
     subtitulo.textContent = (j ? j.corto : p.juego) + (fmt ? ' · ' + fmt.nombre : '');
-    usoE.textContent = '⬇ ' + fmtTok(entradaTotal(t));
-    usoS.textContent = '⬆ ' + fmtTok(t.salida);
+    const sinDatos = !entradaTotal(t) && !t.salida && t.sin_desglose > 0;     // solo turnos antiguos, sin desglose de tokens
+    usoE.textContent = '⬇ ' + (sinDatos ? '—' : fmtTok(entradaTotal(t)));
+    usoS.textContent = '⬆ ' + (sinDatos ? '—' : fmtTok(t.salida));
     usoC.textContent = textoCoste(t);
     btnUso.title = 'Entrada: ' + fmtTok(t.entrada) + ' nueva + ' + fmtTok(t.cache_leida + t.cache_escrita) + ' de caché · Salida: ' + fmtTok(t.salida) +
       (t.coste_completo ? '' : '\nHay turnos sin precio (Codex sin precios en valedores.toml).') + '\nClic para ver el desglose por fases.';
@@ -200,7 +201,14 @@ async function pantallaProyecto(slug) {
     const columnas = [];
     vp.fases.forEach(f => { (columnas[niv[f.id]] = columnas[niv[f.id]] || []).push(f); });
     mapaInt.replaceChildren(cables, h('div', { class: 'capas' }, columnas.map(fs => h('div', { class: 'capa' }, fs.map(f => nodoFase(f, pendientes))))));
-    requestAnimationFrame(pintarCables);
+    requestAnimationFrame(() => {
+      pintarCables();
+      const n = mapaInt.querySelector(st.sel.tipo === 'fase' ? '[data-fase="' + st.sel.id + '"]' : '[data-el="' + st.sel.id + '"]');
+      if (n) {                                     // el nodo seleccionado a la vista, sin mover la página
+        const r = n.getBoundingClientRect(), m = mapaEl.getBoundingClientRect();
+        if (r.left < m.left || r.right > m.right) mapaEl.scrollLeft += (r.left + r.right) / 2 - (m.left + m.right) / 2;
+      }
+    });
   }
 
   function pintarCables() {
@@ -449,11 +457,11 @@ async function pantallaProyecto(slug) {
     }
 
     function repintar() {
-      zonaObj.replaceChildren(
+      zonaObj.replaceChildren(...[
         h('div', { class: 'obj-fila' }, h('span', { class: 'obj-et' }, 'Fases'), vp.fases.map(f => chip((ICONO_FASE[f.id] || '') + ' ' + f.nombre, 'fase', f.id, f.estado))),
         vp.elementos.length ? h('div', { class: 'obj-fila' }, h('span', { class: 'obj-et' }, 'Elementos'),
           vp.elementos.map(e => chip((ICONO_TIPO[e.tipo] || '') + ' ' + e.nombre, 'elemento', e.id, e.estado))) : null,
-        objetivos.size ? null : h('p', { class: 'suave pequeno' }, 'Sin elegir nada: «todo el vídeo / no lo sé». El agente decide qué hay que tocar.'));
+        objetivos.size ? null : h('p', { class: 'suave pequeno' }, 'Sin elegir nada: «todo el vídeo / no lo sé». El agente decide qué hay que tocar.')].filter(Boolean));
       const af = afectadas();
       zonaAf.replaceChildren(...(af.length ? [
         h('p', { class: 'obj-et' }, 'Lo que viene después y ya tiene trabajo hecho (se marcará para rehacer):'),
@@ -524,7 +532,7 @@ async function pantallaProyecto(slug) {
     const o = hilo && hilo.ocupado;
     btnParar.hidden = !o;
     btnEnviar.textContent = o ? 'Encolar' : 'Enviar';
-    texto.placeholder = o ? 'El agente está trabajando… lo que escribas se enviará al terminar su turno' : 'Escribe al agente… (Enter envía · Mayús+Enter salto de línea)';
+    texto.placeholder = o ? 'Trabajando… lo que escribas se enviará al terminar' : 'Escribe al agente… (Enter envía)';
   }
 
   function aplicarChat() {

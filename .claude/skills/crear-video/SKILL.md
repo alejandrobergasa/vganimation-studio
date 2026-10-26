@@ -44,6 +44,28 @@ Protocolo al terminar una fase en `paso_a_paso`:
 5. Una fase que no aplica (vídeo sin música) → `omitida` con nota. Pregunta solo si algo te bloquea de verdad;
    si no, decide con criterio, anótalo en el artefacto y sigue.
 
+## 1b. El mapa del vídeo: elementos, tiempos, cambios y paralelo
+El estudio dibuja un **mapa** con `proyecto.json`. Mantenlo al día; es lo que el usuario mira para saber por dónde vais.
+- **Elementos**: cada concepto del vídeo (el guion, la música, cada personaje, escenario, escena, voz, efecto…) se registra
+  colgado de una fase. Créalos al empezar la fase en la que aparecen y actualiza su estado:
+  ```
+  python valedores.py elemento <slug> mario --tipo personaje --fase escenas --nombre "Mario" --estado en_curso --eta 120
+  python valedores.py elemento <slug> mario --estado validar --archivo previsualizacion/mario.png
+  python valedores.py elemento <slug> voz_portero --tipo voz --fase escenas --depende guion_texto
+  ```
+  Tipos: `guion musica personaje escenario escena voz efecto texto imagen video otro`. Ids cortos (`escena_03`, `voz_portero`).
+- **Tiempos y carga**: al empezar algo que tarde, `--eta <segundos>` en `fase`/`elemento`; el estudio enseña un indicador con barra de
+  progreso. Los comandos largos (render, síntesis de audio) van siempre con `python valedores.py ejecutar <slug> [--eta N] [--etiqueta "Render"] -- <cmd>`:
+  se registran como tarea y, si no das `--eta`, se usa la mediana de las veces anteriores. `--progreso 0-100` solo si lo conoces de verdad.
+- **Cambios del usuario**: puede pedirlos **sobre cualquier cosa y en cualquier momento**, también de fases anteriores o ya aprobadas. Te llegan
+  como «Petición de cambio #N» con su alcance y las fases que ya están en `cambios`. Haz: `python valedores.py cambio <slug> N en_curso`;
+  calcula el alcance real y marca lo que falte (`fase … cambios`, `elemento … --estado cambios`) diciéndoselo; rehaz solo lo necesario en orden
+  de dependencias, con cada fase/elemento en `en_curso` y luego `validar`; cierra con `python valedores.py cambio <slug> N hecho`.
+- **Paralelo**: `musica` y `storyboard` solo dependen del `guion`, así que el usuario puede lanzarlas a la vez con un agente por fase
+  (carriles). Si eres uno de esos agentes, trabaja **solo** tu fase y sus elementos, no toques los ficheros ni el estado de las demás, y para al
+  terminar en `validar`. Dentro de tu fase puedes paralelizar lo independiente (renders de escenas sueltas, voces) con procesos en segundo plano
+  o subagentes; no lo hagas con cosas que dependan unas de otras. `escenas` espera a que música y storyboard estén aprobadas.
+
 ## 2. Las fases y qué entregan
 | Fase | Artefacto (en `proyectos/<slug>/`) | Contenido |
 |---|---|---|

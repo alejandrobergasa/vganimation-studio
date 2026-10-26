@@ -152,9 +152,9 @@ button.chat-toggle.on { border-color: var(--acento); }
 .cable.fino { stroke-width: 1.2; stroke-dasharray: 3 4; }
 .cable.resalta { stroke: var(--acento); stroke-width: 2.6; }
 @keyframes flujo { to { stroke-dashoffset: -12; } }
-.capas { position: relative; display: flex; align-items: center; gap: 42px; }
+.capas { position: relative; display: flex; align-items: center; gap: 34px; }
 .capa { display: flex; flex-direction: column; justify-content: center; gap: 14px; }
-.nodo { width: 196px; background: var(--panel2); border: 1px solid var(--borde); border-radius: 12px; padding: 9px 10px 10px; position: relative; transition: border-color .2s, box-shadow .2s; }
+.nodo { width: 184px; background: var(--panel2); border: 1px solid var(--borde); border-radius: 12px; padding: 9px 10px 10px; position: relative; transition: border-color .2s, box-shadow .2s; }
 .nodo:has(.elementos.dos) { width: 330px; }
 .nodo.sel { border-color: var(--acento); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 28%, transparent); }
 .nodo.est-en_curso { border-color: color-mix(in srgb, var(--acento) 70%, var(--borde)); }
