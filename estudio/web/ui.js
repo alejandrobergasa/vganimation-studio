@@ -37,6 +37,13 @@ function fmtTiempo(seg) {
 // Entrada total = lo nuevo + lo leído de caché + lo escrito en caché (todo lo que el modelo tuvo que leer).
 const entradaTotal = u => (u.entrada || 0) + (u.cache_leida || 0) + (u.cache_escrita || 0);
 
+// Vídeo que respeta su proporción: los verticales (9:16) se enseñan altos y estrechos, no encajados en una caja horizontal.
+function elVideo(src) {
+  const v = h('video', { src, controls: true, preload: 'metadata' });
+  v.addEventListener('loadedmetadata', () => { if (v.videoHeight > v.videoWidth) v.classList.add('vertical'); });
+  return v;
+}
+
 // ---------------------------------------------------------------- indicadores
 function spinner(clase) { return h('span', { class: 'spin' + (clase ? ' ' + clase : ''), role: 'status', 'aria-label': 'En proceso' }); }
 

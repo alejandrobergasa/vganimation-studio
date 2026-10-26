@@ -35,7 +35,7 @@ function crearHilo(slug, carril, cb) {
     return h('div', { class: 'msg usuario' + (cambio ? ' cambio' : '') }, ev.texto,
       ev.adjuntos && ev.adjuntos.length ? h('div', { class: 'adjs' }, ev.adjuntos.map(a =>
         a.tipo === 'imagen' ? h('img', { src: a.url, title: a.nombre, onclick: () => ampliar(a.url) })
-          : a.tipo === 'video' ? h('video', { src: a.url, controls: true, preload: 'metadata' })
+          : a.tipo === 'video' ? elVideo(a.url)
             : h('a', { href: a.url, target: '_blank', class: 'adj' }, (a.tipo === 'audio' ? '🎵 ' : '📄 ') + a.nombre))) : null);
   }
 

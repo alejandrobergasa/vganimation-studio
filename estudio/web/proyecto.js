@@ -42,6 +42,7 @@ async function pantallaProyecto(slug) {
 
   // ================================================================ esqueleto
   const cab = h('header', { class: 'proy-cab' });
+  const resumenMapa = h('div', { class: 'resumen-mapa' });
   const tareasEl = h('div', { class: 'tareas' });
   const mapaInt = h('div', { class: 'mapa-int' });
   const cables = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -50,7 +51,7 @@ async function pantallaProyecto(slug) {
   const pestanasEl = h('div', { class: 'pestanas', role: 'tablist' });
   const cuerpoEl = h('div', { class: 'pestana-cuerpo' });
   const principal = h('section', { class: 'proy-main' },
-    h('div', { class: 'mapa-caja' }, h('div', { class: 'mapa-tit' }, h('h2', {}, 'Mapa del vídeo'), leyenda()), tareasEl, mapaEl),
+    h('div', { class: 'mapa-caja' }, h('div', { class: 'mapa-tit' }, h('h2', {}, 'Mapa del vídeo'), resumenMapa, h('span', { class: 'grow' }), leyenda()), tareasEl, mapaEl),
     pestanasEl, cuerpoEl);
   const sep = h('div', { class: 'sep', title: 'Arrastra para cambiar el ancho del chat' });
   const tabsChat = h('div', { class: 'chat-tabs' });
@@ -200,7 +201,10 @@ async function pantallaProyecto(slug) {
     const niv = nivelesDeFases();
     const columnas = [];
     vp.fases.forEach(f => { (columnas[niv[f.id]] = columnas[niv[f.id]] || []).push(f); });
-    mapaInt.replaceChildren(cables, h('div', { class: 'capas' }, columnas.map(fs => h('div', { class: 'capa' }, fs.map(f => nodoFase(f, pendientes))))));
+    mapaInt.replaceChildren(cables, h('div', { class: 'capas' }, columnas.map(fs => h('div', { class: 'capa' },
+      fs.length > 1 ? h('div', { class: 'capa-et', title: 'Estas fases no dependen una de otra: se pueden hacer a la vez' }, '⇉ en paralelo') : null,
+      fs.map(f => nodoFase(f, pendientes))))));
+    pintarResumen();
     ajustarMapa();
     requestAnimationFrame(() => {
       pintarCables();
@@ -212,11 +216,18 @@ async function pantallaProyecto(slug) {
     });
   }
 
+  function pintarResumen() {
+    const hechas = vp.fases.filter(f => f.estado === 'aprobada' || f.estado === 'omitida').length, total = vp.fases.length;
+    const curso = vp.fases.filter(f => f.estado === 'en_curso').length, validar = vp.fases.filter(f => f.estado === 'validar').length;
+    const partes = [hechas + ' de ' + total + ' fases'];
+    if (curso) partes.push(curso + ' en curso');
+    if (validar) partes.push(validar + ' por validar');
+    resumenMapa.replaceChildren(h('div', { class: 'pista' }, h('div', { class: 'rel', style: 'width:' + Math.round(100 * hechas / total) + '%' })), h('span', {}, partes.join(' · ')));
+  }
+
   function pintarCables() {
     if (!mapaInt.isConnected) return;
     const r0 = mapaInt.getBoundingClientRect();
-    cables.setAttribute('width', mapaInt.scrollWidth);
-    cables.setAttribute('height', mapaInt.scrollHeight);
     const caminos = [];
     const sel = st.sel.tipo === 'fase' ? st.sel.id : (elemento(st.sel.id) || {}).fase;
     const unir = (a, b, clase) => {
@@ -228,6 +239,10 @@ async function pantallaProyecto(slug) {
       p.setAttribute('d', 'M' + x1 + ',' + y1 + ' C' + (x1 + dx) + ',' + y1 + ' ' + (x2 - dx) + ',' + y2 + ' ' + x2 + ',' + y2);
       p.setAttribute('class', clase);
       caminos.push(p);
+      const f = document.createElementNS('http://www.w3.org/2000/svg', 'path');       // punta de flecha en el destino
+      f.setAttribute('d', 'M' + x2 + ',' + y2 + ' l-7,-4 l0,8 z');
+      f.setAttribute('class', clase.replace('cable', 'flecha'));
+      caminos.push(f);
     };
     for (const [f, deps] of Object.entries(ESTADO.dependencias)) {
       const destino = fase(f);
@@ -283,7 +298,7 @@ async function pantallaProyecto(slug) {
   // ---- visor de ficheros
   function bloqueArchivo(a) {
     const cab = h('div', { class: 'arch-cab' }, h('span', { class: 'arch-nom' }, a.nombre), h('a', { href: a.url, target: '_blank', class: 'suave' }, 'abrir ↗'));
-    if (a.tipo === 'video') return h('div', { class: 'arch' }, cab, h('video', { src: a.url, controls: true, preload: 'metadata' }));
+    if (a.tipo === 'video') return h('div', { class: 'arch' }, cab, elVideo(a.url));
     if (a.tipo === 'audio') return h('div', { class: 'arch' }, cab, h('audio', { src: a.url, controls: true }));
     if (a.tipo === 'texto' || a.tipo === 'codigo') {
       const doc = h('div', { class: 'doc cerrado' }, 'Cargando…');
@@ -406,7 +421,7 @@ async function pantallaProyecto(slug) {
       subidor(slug, pend),
       h('h3', {}, 'Vídeos de salida'),
       salida.length ? h('div', { class: 'cuadricula' }, salida.map(f => h('div', { class: 'c' },
-        f.tipo === 'video' ? h('video', { src: f.url, controls: true, preload: 'metadata' }) : h('img', { src: f.url, loading: 'lazy', onclick: () => ampliar(f.url) }),
+        f.tipo === 'video' ? elVideo(f.url) : h('img', { src: f.url, loading: 'lazy', onclick: () => ampliar(f.url) }),
         h('div', { title: f.ruta }, h('a', { href: f.url, target: '_blank' }, f.nombre), ' · ' + tamano(f.tam))))) : h('p', { class: 'suave' }, 'Aún no hay vídeos.'),
       h('h3', {}, 'Archivos del proyecto'),
       h('div', { class: 'lista-arch' }, vp.archivos.map(a => h('div', {}, h('a', { href: a.url, target: '_blank' }, a.nombre), h('span', { class: 'suave' }, ' · ' + tamano(a.tam))))));

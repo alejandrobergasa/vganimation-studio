@@ -296,7 +296,7 @@ function subidor(slug, tras) {
 function cuadricula(fs) {
   if (!fs.length) return h('p', { class: 'suave' }, 'Vacía.');
   return h('div', { class: 'cuadricula' }, fs.map(f => h('div', { class: 'c' },
-    f.tipo === 'video' ? h('video', { src: f.url, controls: true, preload: 'metadata' })
+    f.tipo === 'video' ? elVideo(f.url)
       : f.tipo === 'imagen' ? h('img', { src: f.url, loading: 'lazy', onclick: () => ampliar(f.url) })
         : f.tipo === 'audio' ? h('audio', { src: f.url, controls: true, style: 'width:100%' }) : null,
     h('div', { title: f.ruta }, h('a', { href: f.url, target: '_blank' }, f.nombre), ' · ' + tamano(f.tam)))));
