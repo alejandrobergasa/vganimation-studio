@@ -238,6 +238,20 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             pass
 
+    def _index(self, p):
+        """index.html con la versión de app.js/app.css en la URL: tras editar la interfaz el navegador nunca usa una copia vieja."""
+        with open(p, encoding='utf-8') as f:
+            html = f.read()
+        v = int(max(os.path.getmtime(os.path.join(WEB, n)) for n in ('app.js', 'app.css', 'index.html')))
+        html = html.replace('app.css"', 'app.css?v=%d"' % v).replace('app.js"', 'app.js?v=%d"' % v)
+        cuerpo = html.encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_header('Content-Length', str(len(cuerpo)))
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        self.wfile.write(cuerpo)
+
     # ---------------------------------------------------------- GET
     def do_GET(self):
         r = self._entrar(False)
@@ -258,6 +272,8 @@ class Handler(BaseHTTPRequestHandler):
             p = os.path.realpath(os.path.join(WEB, nombre))
             if not p.startswith(os.path.realpath(WEB) + os.sep):
                 return self._error(404, 'No existe')
+            if nombre == 'index.html' and os.path.isfile(p):
+                return self._index(p)
             return self._fichero(p)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             pass

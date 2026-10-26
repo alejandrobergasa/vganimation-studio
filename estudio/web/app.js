@@ -153,6 +153,39 @@ function formularioProyecto(j) {
   const titulo = h('input', { placeholder: 'Título del vídeo' });
   const brief = h('textarea', { rows: 8, placeholder: 'Tu idea o el guion tal cual: qué pasa, quién sale, el tono, la duración… Puedes dejarlo corto y afinarlo en el chat.' });
   const err = h('p', { class: 'suave' });
+
+  // adjuntos del formulario: se guardan en memoria y se suben al crear el proyecto (hace falta su carpeta)
+  const locales = [];
+  const chips = h('div', { class: 'chips' });
+  const tipoLocal = f => /^image\//.test(f.type) ? 'imagen' : /^video\//.test(f.type) ? 'video' : /^audio\//.test(f.type) ? 'audio' : 'otro';
+  function pintarLocales() {
+    chips.replaceChildren(...locales.map(a => h('div', { class: 'chip' },
+      a.tipo === 'imagen' ? h('img', { src: a.vista }) : h('span', { class: 'ico' }, { video: '🎬', audio: '🎵' }[a.tipo] || '📄'),
+      h('span', { class: 'nom', title: a.file.name }, a.file.name),
+      h('span', { class: 'prog' }, a.progreso != null ? Math.round(a.progreso * 100) + '%' : tamano(a.file.size)),
+      h('button', { class: 'x', title: 'Quitar', onclick: () => { locales.splice(locales.indexOf(a), 1); pintarLocales(); } }, '×'))));
+  }
+  function anadir(files) {
+    for (const f of files) {
+      if (!f.name) continue;
+      const tipo = tipoLocal(f);
+      locales.push({ file: f, tipo, vista: tipo === 'imagen' ? URL.createObjectURL(f) : null });
+    }
+    pintarLocales();
+  }
+  const selFicheros = h('input', { type: 'file', multiple: true, hidden: true, onchange: () => { anadir([...selFicheros.files]); selFicheros.value = ''; } });
+  const zonaAdj = h('div', { class: 'dropzona', style: 'padding:14px', onclick: () => selFicheros.click() },
+    '📎 Adjunta fotos, vídeos de referencia, audios o assets (arrastra aquí o haz clic)');
+  zonaAdj.addEventListener('dragover', e => { e.preventDefault(); zonaAdj.classList.add('sobre'); });
+  zonaAdj.addEventListener('dragleave', () => zonaAdj.classList.remove('sobre'));
+  zonaAdj.addEventListener('drop', e => { e.preventDefault(); zonaAdj.classList.remove('sobre'); anadir([...e.dataTransfer.files]); });
+  brief.addEventListener('paste', e => {
+    const fs = [...(e.clipboardData ? e.clipboardData.files : [])];
+    if (!fs.length) return;
+    e.preventDefault();
+    anadir(fs.map(f => (f.name && f.name !== 'image.png') ? f : new File([f], 'captura_' + Date.now() + '.png', { type: f.type })));
+  });
+
   const modal = h('div', { class: 'modal', onclick: ev => { if (ev.target === modal) modal.remove(); } },
     h('div', { class: 'tarjeta', style: 'width:min(640px,100%);max-height:100%;overflow:auto' },
       h('h2', { style: 'margin-top:0' }, 'Nuevo vídeo de ' + j.corto),
@@ -167,7 +200,8 @@ function formularioProyecto(j) {
         sel.agente = v; sel.modelo = ag[v].modelo_defecto; sel.esfuerzo = ag[v].esfuerzo_defecto; opcionesAgente(sel, cont);
       }),
       cont,
-      h('label', {}, 'Idea / guion'), brief, err,
+      h('label', {}, 'Idea / guion'), brief,
+      h('label', {}, 'Adjuntos (opcional)'), chips, zonaAdj, selFicheros, err,
       h('div', { class: 'acciones', style: 'margin-top:14px;justify-content:flex-end' },
         h('button', { onclick: () => modal.remove() }, 'Cancelar'),
         h('button', { class: 'primario', onclick: async ev => {
@@ -176,9 +210,16 @@ function formularioProyecto(j) {
             const p = await api('/api/proyectos', { metodo: 'POST', json: {
               titulo: titulo.value, juego: j.id, formato: sel.formato, ritmo: sel.ritmo, agente: sel.agente, modelo: sel.modelo,
               esfuerzo: sel.esfuerzo, brief: brief.value } });
-            if (brief.value.trim()) {
+            const subidos = [];
+            for (const a of locales) {
+              a.progreso = 0; pintarLocales();
+              const d = await subirFichero(a.file, p.slug, pr => { a.progreso = pr; pintarLocales(); });
+              subidos.push(d.ruta);
+            }
+            if (brief.value.trim() || subidos.length) {
               const seguir = sel.ritmo === 'de_una' ? 'Hazlo todo seguido y enséñame el resultado final.' : 'Empieza por la fase «idea» y párate para que la valide.';
-              sessionStorage.setItem('primer-' + p.slug, 'Esta es mi idea (también está en brief.md):\n\n' + brief.value.trim() + '\n\n' + seguir);
+              const idea = brief.value.trim() ? 'Esta es mi idea (también está en brief.md):\n\n' + brief.value.trim() : 'Aún no tengo la idea escrita; mira los ficheros adjuntos y pregúntame lo que necesites.';
+              sessionStorage.setItem('primer-' + p.slug, JSON.stringify({ texto: idea + '\n\n' + seguir, adjuntos: subidos }));
             }
             modal.remove();
             location.hash = '#/p/' + p.slug;
@@ -333,9 +374,9 @@ async function pantallaProyecto(slug) {
     adjuntar(fs.map(f => (f.name && f.name !== 'image.png') ? f : new File([f], 'captura_' + Date.now() + '.png', { type: f.type })));
   });
 
-  async function enviar(msg) {
+  async function enviar(msg, rutas) {
     const t = (msg || texto.value).trim();
-    const listos = msg ? [] : adjuntos.filter(a => a.url);
+    const listos = msg ? (rutas || []).map(r => ({ ruta: r, url: true })) : adjuntos.filter(a => a.url);
     if ((!t && !listos.length) || ocupado) return;
     if (!msg && adjuntos.some(a => !a.url && !a.error)) { avisar('Espera a que terminen de subirse los adjuntos.'); return; }
     try {
@@ -433,7 +474,12 @@ async function pantallaProyecto(slug) {
 
   pintarIzq(); pintarDer(); fijarOcupado(ocupado);
   const primero = sessionStorage.getItem('primer-' + slug);
-  if (primero) { sessionStorage.removeItem('primer-' + slug); setTimeout(() => enviar(primero), 300); }
+  if (primero) {
+    sessionStorage.removeItem('primer-' + slug);
+    let m = { texto: primero, adjuntos: [] };
+    try { m = JSON.parse(primero); } catch (e) { /* texto simple */ }
+    setTimeout(() => enviar(m.texto, m.adjuntos), 300);
+  }
 }
 
 function subidor(slug, tras) {
