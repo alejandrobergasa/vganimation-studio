@@ -66,6 +66,16 @@ El estudio dibuja un **mapa** con `proyecto.json`. Mantenlo al día; es lo que e
   terminar en `validar`. Dentro de tu fase puedes paralelizar lo independiente (renders de escenas sueltas, voces) con procesos en segundo plano
   o subagentes; no lo hagas con cosas que dependan unas de otras. `escenas` espera a que música y storyboard estén aprobadas.
 
+## 1c. Ahorro de tokens
+Cada mensaje vuelve a leer toda la conversación, así que lo que se queda en el contexto se paga una y otra vez. El estudio abre una
+**sesión nueva al cambiar de fase** cuando el contexto ha crecido mucho y te da un resumen del estado del proyecto; por eso:
+- **La memoria está en los ficheros, no en la conversación.** Decisiones, números y rutas van al artefacto de la fase (`brief.md`, `guion.md`…)
+  y a la nota de la fase. Lo que solo dijiste en el chat puede no estar en la sesión siguiente.
+- Al empezar, lee solo lo que necesitas de la fase (el resumen te dice qué hay); no releas ficheros que ya tienes en el contexto ni todo `proyectos/<slug>/`.
+- Imágenes: cada una pesa mucho. Usa hojas de contactos (`revisar hoja`) en vez de fotograma a fotograma, y no vuelvas a abrir una que no ha cambiado.
+- Salida de comandos: recórtala (`| tail -n 20`, `| head`, `--quiet`); nunca vuelques logs enteros de render o de extracción.
+- Respuestas de ≤ 6 líneas; el detalle va en el fichero, no en el chat.
+
 ## 2. Las fases y qué entregan
 | Fase | Artefacto (en `proyectos/<slug>/`) | Contenido |
 |---|---|---|

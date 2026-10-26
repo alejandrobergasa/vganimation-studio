@@ -21,9 +21,9 @@ python valedores.py doctor        # comprueba el entorno
 
 ## El estudio
 
-También hay **extracción base de recursos** para Inazuma Eleven (`inazuma-eleven`), Mario Party DS (`mario-party-ds`),
+También hay **extracción y motores de vídeo** para Inazuma Eleven (`inazuma-eleven`), Mario Party DS (`mario-party-ds`),
 Phoenix Wright: Trials and Tribulations (`phoenix-wright-3`), El profesor Layton y la villa misteriosa (`profesor-layton`)
-y Super Mario 64 DS (`super-mario-64-ds`). Aún no tienen motor de vídeo. Conservan todos los archivos NitroFS,
+y Super Mario 64 DS (`super-mario-64-ds`), en horizontal y vertical. Conservan los archivos NitroFS,
 abren contenedores compatibles y convierten los recursos descritos en su `CONOCIMIENTO.md`; los formatos propietarios
 pendientes siguen como binarios originales. Para extraer estos cinco juegos:
 
@@ -49,6 +49,8 @@ Una página local (`127.0.0.1`, sin dependencias externas):
   voces…), indicadores de carga y barras de progreso con el tiempo estimado. El chat es un panel plegable a la derecha, con Markdown.
 - **Consumo**: tokens de entrada/salida y precio del proyecto siempre visibles en la cabecera, con desglose por fase (el precio lo informa Claude Code;
   para Codex defínelo en `valedores.toml`, sección `[precios]`).
+- **Ahorro de tokens**: el chat enseña el tamaño del contexto (`ctx`); al cambiar de fase con la conversación grande, el agente sigue en una sesión
+  nueva con un resumen del proyecto (ajustable, botón ↻ para forzarlo).
 - **Pedir cambios**: sobre cualquier fase o elemento y en cualquier momento; el estudio marca lo que hay que rehacer (y lo posterior afectado).
 - **Trabajo en paralelo**: «⇉ En paralelo» lanza un agente aparte para una fase que no dependa de las que están en marcha.
 - **Adjuntos en el chat**: botón 📎, arrastrar ficheros sobre el chat o pegar una captura. Se guardan en `entrada/<proyecto>/` y el agente recibe

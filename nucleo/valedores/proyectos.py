@@ -128,7 +128,7 @@ def crear(titulo, juego, formato=None, ritmo='paso_a_paso', agente='claude', mod
         formato = fmts[0]
     p = {
         'slug': s, 'titulo': titulo, 'juego': juego, 'formato': formato, 'ritmo': ritmo,
-        'agente': agente, 'modelo': modelo, 'esfuerzo': esfuerzo, 'permisos': 'normal',
+        'agente': agente, 'modelo': modelo, 'esfuerzo': esfuerzo, 'permisos': 'normal', 'optimizar': True,
         'creado': time.strftime('%Y-%m-%d %H:%M:%S'),
         'fase_actual': 'idea',
         'fases': {f['id']: {'estado': 'pendiente', 'archivos': [], 'nota': ''} for f in FASES},
@@ -393,11 +393,39 @@ def contexto(slug, carril=None):
         ' (con `--eta` en segundos cuando algo vaya a tardar); los comandos largos, con `python valedores.py ejecutar`.',
     ]
     if carril:
-        otras = [f for f in IDS_FASE if f != carril and p['fases'][f]['estado'] == 'en_curso']
+        # Texto fijo: si cambiase de un turno a otro, la caché del prompt se invalidaría y se pagaría de nuevo todo el contexto.
         lineas += [
             '',
-            'ERES EL AGENTE EN PARALELO DE LA FASE «%s». Trabaja SOLO en esa fase y en sus elementos. Otros agentes trabajan a la vez en el mismo'
-            ' proyecto (fases en curso: %s): no edites los ficheros de otras fases ni toques su estado.' % (carril, ', '.join(otras) or 'ninguna'),
+            'ERES EL AGENTE EN PARALELO DE LA FASE «%s». Trabaja SOLO en esa fase y en sus elementos. Otros agentes pueden trabajar a la vez en el mismo'
+            ' proyecto: no edites los ficheros de otras fases ni toques su estado.' % carril,
             'Al terminar marca la fase `validar` con una nota y para: la valida el usuario.',
         ]
+    return '\n'.join(lineas)
+
+
+def resumen_estado(slug, max_brief=500):
+    """Resumen compacto del estado del proyecto para abrir una sesión nueva del agente sin arrastrar la conversación anterior:
+    la memoria del vídeo está en sus ficheros, así que basta un índice con lo decidido y lo pendiente."""
+    p = leer(slug)
+    nombres = {f['id']: f['nombre'] for f in FASES}
+    lineas = ['Estado actual del proyecto (esta sesión es nueva: la memoria del vídeo está en sus ficheros, no en la conversación anterior):']
+    try:
+        with open(os.path.join(rutas.proyecto_dir(slug), 'brief.md'), encoding='utf-8') as f:
+            brief = ' '.join(l.strip() for l in f.read().splitlines() if l.strip() and not l.startswith('#'))
+    except OSError:
+        brief = ''
+    if brief:
+        lineas.append('- Idea (`brief.md`): ' + (brief if len(brief) <= max_brief else brief[:max_brief - 1] + '…'))
+    for f in FASES:
+        d = p['fases'][f['id']]
+        extra = ' — ' + d['nota'] if d.get('nota') else ''
+        arch = ' [%s]' % ', '.join(d['archivos'][:4]) if d.get('archivos') else ''
+        lineas.append('- %s (`%s`): %s%s%s' % (f['nombre'], f['id'], d['estado'], extra, arch))
+    els = list(p.get('elementos', {}).values())
+    if els:
+        lineas.append('- Elementos: ' + ', '.join('%s (%s, %s, %s)' % (e['id'], e['tipo'], e['fase'], e['estado']) for e in els[:30]) + (' …' if len(els) > 30 else ''))
+    pend = [c for c in p.get('cambios', []) if c['estado'] in ('pendiente', 'en_curso')]
+    for c in pend:
+        lineas.append('- Cambio #%d (%s): %s' % (c['id'], c['estado'], c['texto']))
+    lineas.append('Lee solo los ficheros de `proyectos/%s/` que necesites para lo que te piden ahora; no releas todo el proyecto.' % slug)
     return '\n'.join(lineas)

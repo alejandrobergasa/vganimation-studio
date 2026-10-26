@@ -253,6 +253,10 @@ button.chat-toggle.on { border-color: var(--acento); }
 .chat-panel { display: flex; flex-direction: column; min-height: 0; background: var(--panel); position: relative; min-width: 0; }
 .chat-tabs { display: flex; align-items: center; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--borde); overflow-x: auto; flex: none; }
 .tab-chat { display: inline-flex; align-items: center; gap: 6px; border-radius: 99px; padding: 3px 12px; font-size: 13px; background: none; border-color: transparent; color: var(--suave); white-space: nowrap; }
+.ctx { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; padding: 1px 4px 1px 9px; border-radius: 99px; border: 1px solid var(--borde); color: var(--suave); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ctx.medio { color: var(--aviso); border-color: currentColor; }
+.ctx.alto { color: var(--error); border-color: currentColor; }
+.ctx button.icono { padding: 0 6px; font-size: 13px; border: 0; background: none; color: inherit; }
 .tab-chat.on { background: var(--panel2); color: var(--texto); border-color: var(--borde); }
 .hilos { flex: 1; min-height: 0; display: flex; }
 .mensajes { flex: 1; min-width: 0; overflow: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }

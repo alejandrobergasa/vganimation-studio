@@ -16,6 +16,12 @@ from . import agentes
 ESTADO = os.path.join(rutas.REPO, '.estudio', 'chats')
 PRINCIPAL = 'principal'
 
+# Política de sesiones (ahorro de tokens). Cada turno reanuda la sesión, y todo su contexto se vuelve a leer (y se vuelve a escribir en la
+# caché si el usuario tarda más de unos minutos en contestar). Como la memoria del vídeo está en los ficheros del proyecto, al cambiar de
+# fase compensa abrir una sesión nueva con un resumen del estado en vez de arrastrar la conversación entera.
+ROTAR_FASE = 30_000        # tokens de contexto por encima del inicio de la sesión a partir de los cuales un cambio de fase la renueva
+ROTAR_MAX = 120_000        # a partir de aquí se renueva aunque no cambie la fase
+
 
 PISTAS = {
     'imagen': 'ábrela con la herramienta de lectura de imágenes',
@@ -51,7 +57,8 @@ class Chat:
         self.ocupado = False
         self.parado = False
         self.cola = []                 # mensajes escritos mientras el agente trabaja: se envían uno a uno al terminar
-        self.sesiones = {}
+        self.renovar = False           # el usuario ha pedido una sesión nueva para el próximo turno
+        self.sesiones = {}             # {agente: id de sesión, '_meta': {agente: {fase, ctx, base, turnos}}}
         if os.path.isfile(self.f_log):
             with open(self.f_log, encoding='utf-8') as f:
                 for linea in f:
@@ -145,14 +152,68 @@ class Chat:
             return inicial
         return inicial if fa in carriles_ocupados(self.slug) else fa
 
+    def meta(self, agente):
+        return self.sesiones.get('_meta', {}).get(agente, {})
+
+    def contexto_actual(self):
+        """Tokens de contexto de la sesión en curso del agente del proyecto (0 si no hay)."""
+        try:
+            agente = proyectos.leer(self.slug).get('agente', 'claude')
+        except (OSError, ValueError):
+            return 0
+        return self.meta(agente).get('ctx', 0) if self.sesiones.get(agente) else 0
+
+    def renovar_sesion(self):
+        """Pide una sesión nueva: si no hay turno en marcha se olvida ya la actual; si lo hay, se hará al empezar el siguiente."""
+        with self.lock:
+            self.renovar = True
+            if not self.ocupado:
+                self._olvidar_sesion()
+
+    def _olvidar_sesion(self):
+        try:
+            agente = proyectos.leer(self.slug).get('agente', 'claude')
+        except (OSError, ValueError):
+            return
+        self.sesiones.pop(agente, None)
+        self.sesiones.get('_meta', {}).pop(agente, None)
+        self._guardar_sesiones()
+
+    def _politica_sesion(self, p, agente, fase):
+        """¿Se continúa la sesión o se abre una nueva? Devuelve (id de sesión o None, motivo de renovarla o None)."""
+        sesion = self.sesiones.get(agente)
+        if not sesion:
+            self.renovar = False
+            return None, None
+        if self.renovar:
+            return None, 'a petición tuya'
+        if not p.get('optimizar', True):
+            return sesion, None
+        m = self.meta(agente)
+        extra = m.get('ctx', 0) - m.get('base', 0)
+        if extra > ROTAR_MAX:
+            return None, 'el contexto había crecido a %d k tokens' % (m.get('ctx', 0) // 1000)
+        if m.get('fase') and m['fase'] != fase and extra > ROTAR_FASE:
+            return None, 'cambio de fase (el contexto era de %d k tokens)' % (m.get('ctx', 0) // 1000)
+        return sesion, None
+
     def _turno(self, texto, reintento=False):
         try:
             p = proyectos.leer(self.slug)
             agente = p.get('agente', 'claude')
-            sesion = self.sesiones.get(agente)
+            inicial = self.carril if self.carril != PRINCIPAL else p.get('fase_actual', 'idea')
+            sesion, motivo = (None, None) if reintento else self._politica_sesion(p, agente, inicial)
+            if motivo:
+                with self.lock:
+                    self.renovar = False
+                self._olvidar_sesion()
+                self.emitir({'t': 'sistema', 'texto': '↻ Sesión nueva (%s): el agente parte del resumen del estado del proyecto, no de toda la conversación, y así consume menos.' % motivo})
+            nueva_sesion = sesion is None
+            if nueva_sesion and any(e.get('t') == 'fin' for e in self.eventos):
+                texto = proyectos.resumen_estado(self.slug) + '\n\n---\n\n' + texto
             sistema = proyectos.contexto(self.slug, None if self.carril == PRINCIPAL else self.carril)
             hubo_error = []
-            inicial = self.carril if self.carril != PRINCIPAL else p.get('fase_actual', 'idea')
+            ctx = {}
             actividad = {}
 
             def emitir(e):
@@ -164,6 +225,8 @@ class Chat:
                     f = self._fase_ahora(inicial)
                     actividad[f] = actividad.get(f, 0) + 1
                 if e['t'] == 'fin':
+                    if e.get('contexto'):
+                        ctx['v'] = e['contexto']
                     total = sum(actividad.values())
                     e['reparto'] = {f: n / total for f, n in actividad.items()} if total else {inicial: 1.0}
                     e['carril'] = self.carril
@@ -184,6 +247,13 @@ class Chat:
                 return self._turno(texto, reintento=True)
             if nueva:
                 self.sesiones[agente] = nueva
+                m = self.sesiones.setdefault('_meta', {}).setdefault(agente, {})
+                if nueva_sesion or 'base' not in m:
+                    m['base'] = ctx.get('v', 0)       # lo que pesa una sesión recién abierta: el resto es contexto acumulado
+                    m['turnos'] = 0
+                m['fase'] = inicial
+                m['ctx'] = ctx.get('v', m.get('ctx', 0))
+                m['turnos'] = m.get('turnos', 0) + 1
                 self._guardar_sesiones()
         except Exception as e:  # noqa: BLE001  (se muestra en el chat)
             self.emitir({'t': 'error', 'texto': str(e)})

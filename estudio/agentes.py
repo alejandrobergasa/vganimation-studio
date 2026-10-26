@@ -8,7 +8,8 @@ Cada turno de chat lanza el CLI del agente en modo no interactivo, en la raíz d
     {'t': 'herramienta', 'id', 'nombre', 'resumen'}
     {'t': 'resultado', 'id', 'ok', 'resumen'}
     {'t': 'uso_vivo', 'entrada', 'salida', 'cache_leida', 'cache_escrita'}   consumo del turno hasta ahora (no se guarda)
-    {'t': 'fin', 'coste', 'duracion', 'tokens', 'uso', 'modelo'}      `uso` = {entrada, salida, cache_leida, cache_escrita}
+    {'t': 'fin', 'coste', 'duracion', 'tokens', 'uso', 'modelo', 'contexto'}   `uso` = {entrada, salida, cache_leida, cache_escrita};
+                                                                 `contexto` = tokens que tenía la sesión en su última llamada al modelo
     {'t': 'error', 'texto'}
 """
 import json
@@ -180,7 +181,8 @@ class TraductorClaude:
                    'cache_leida': u.get('cache_read_input_tokens') or 0, 'cache_escrita': u.get('cache_creation_input_tokens') or 0}
             modelos = list((ev.get('modelUsage') or {}).keys())
             out.append({'t': 'fin', 'coste': ev.get('total_cost_usd'), 'duracion': (ev.get('duration_ms') or 0) / 1000,
-                        'tokens': uso['entrada'] + uso['salida'], 'uso': uso, 'modelo': modelos[0] if modelos else None})
+                        'tokens': uso['entrada'] + uso['salida'], 'uso': uso, 'modelo': modelos[0] if modelos else None,
+                        'contexto': self.uso_msg['entrada'] + self.uso_msg['cache_leida'] + self.uso_msg['cache_escrita']})
         return out
 
 
@@ -217,7 +219,7 @@ class TraductorCodex:
             uso = {'entrada': max(0, (u.get('input_tokens') or 0) - cacheado), 'salida': u.get('output_tokens') or 0,
                    'cache_leida': cacheado, 'cache_escrita': 0}
             out.append({'t': 'fin', 'coste': None, 'duracion': None, 'tokens': (u.get('input_tokens') or 0) + (u.get('output_tokens') or 0),
-                        'uso': uso, 'modelo': None})
+                        'uso': uso, 'modelo': None, 'contexto': u.get('input_tokens') or 0})
         elif t in ('turn.failed', 'error'):
             msg = ev.get('message') or (ev.get('error') or {}).get('message') or str(ev)
             out.append({'t': 'error', 'texto': _recortar(msg, 600)})

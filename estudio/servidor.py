@@ -169,7 +169,7 @@ def vista_proyecto(slug):
                          for e in proyectos.entradas(slug)],
             'tareas': tareas.activas(slug), 'ahora': time.time(),
             'uso': {'total': _redondear(uso['total']), 'por_fase': {f: _redondear(d) for f, d in uso['por_fase'].items()}},
-            'carriles': [{'id': c.carril, 'ocupado': c.ocupado, 'cola': len(c.cola), 'eventos': len(c.eventos)} for c in carriles],
+            'carriles': [{'id': c.carril, 'ocupado': c.ocupado, 'cola': len(c.cola), 'eventos': len(c.eventos), 'contexto': c.contexto_actual()} for c in carriles],
             'paralelo': paralelo,
             'ocupado': any(c.ocupado for c in carriles), 'eventos': len(carriles[0].eventos)}
 
@@ -499,7 +499,7 @@ class Handler(BaseHTTPRequestHandler):
             d = self._leer_json()
 
             def aplicar(p):
-                for k in ('titulo', 'agente', 'modelo', 'esfuerzo', 'permisos', 'ritmo', 'formato'):
+                for k in ('titulo', 'agente', 'modelo', 'esfuerzo', 'permisos', 'ritmo', 'formato', 'optimizar'):
                     if k in d:
                         p[k] = d[k]
             return self._json(proyectos.modificar(slug, aplicar))
@@ -552,6 +552,15 @@ class Handler(BaseHTTPRequestHandler):
         if m and metodo == 'POST':
             carril = q.get('carril') or chat.PRINCIPAL
             chat.obtener(m.group(1), carril).parar()
+            return self._json({'ok': True})
+        m = re.fullmatch(r'/api/proyectos/([\w-]+)/sesion/nueva', ruta)
+        if m and metodo == 'POST':
+            if not proyectos.existe(m.group(1)):
+                return self._error(404, 'No existe el proyecto')
+            carril = q.get('carril') or chat.PRINCIPAL
+            if carril != chat.PRINCIPAL and carril not in proyectos.IDS_FASE:
+                raise ValueError('Carril desconocido')
+            chat.obtener(m.group(1), carril).renovar_sesion()
             return self._json({'ok': True})
         m = re.fullmatch(r'/api/proyectos/([\w-]+)/fase', ruta)
         if m and metodo == 'POST':

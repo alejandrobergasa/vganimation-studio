@@ -39,6 +39,12 @@ El estudio lanza el agente elegido (Claude Code o Codex, con el modelo elegido) 
 mensaje (el id se guarda en `.estudio/chats/`, que no se versiona). Por eso el agente puede perder el hilo si se borra: lo que cuenta está
 en los ficheros del proyecto, no en la conversación. **Escribe las decisiones en `brief.md`/`guion.md`/`storyboard.md`.**
 
+**Ahorro de tokens.** Cada mensaje relee todo el contexto de la sesión, así que el estudio la renueva: al cambiar de fase, si el contexto ha
+crecido más de ~30 k tokens sobre el de una sesión recién abierta (o en cualquier momento por encima de ~120 k, o con el botón ↻ del chat), el
+siguiente mensaje abre una sesión nueva y el agente recibe antes un resumen del estado del proyecto (`proyectos.resumen_estado`). Se puede
+desactivar en Ajustes → *Ahorro de tokens* (`optimizar` en `proyecto.json`). El texto de sistema por carril es estático a propósito: si cambiara
+entre mensajes se perdería la caché del prompt. Detalles para el agente en la skill `crear-video`, sección «Ahorro de tokens».
+
 ## Entradas y salidas
 - Lo que el usuario adjunta en el chat del estudio llega al agente como lista de rutas bajo el mensaje («Ficheros adjuntos por el usuario»), ya guardado en `entrada/<slug>/`.
   Imágenes: ábrelas con la herramienta de lectura de imágenes. Vídeos: `python valedores.py revisar hoja <ruta>` (y `revisar audio`).

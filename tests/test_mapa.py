@@ -244,3 +244,81 @@ def test_servidor_carriles_y_cambios(servidor, monkeypatch):
     assert cod == 200 and proyectos.leer(slug)['cambios'][0]['estado'] == 'descartado'
     cod, _ = _pedir(servidor + '/api/proyectos/%s/cambio' % slug, 'POST', {'texto': ''}, cab)
     assert cod == 400
+
+
+# ---------------------------------------------------------------- ahorro de tokens (sesiones)
+def test_traductor_claude_informa_del_contexto():
+    from estudio.agentes import TraductorClaude
+    t = TraductorClaude()
+    t({'type': 'stream_event', 'event': {'type': 'message_start', 'message': {'usage': {
+        'input_tokens': 3, 'cache_creation_input_tokens': 1000, 'cache_read_input_tokens': 29000, 'output_tokens': 1}}}})
+    r = t({'type': 'result', 'total_cost_usd': 0.1, 'usage': {'input_tokens': 3, 'output_tokens': 5}})[0]
+    assert r['contexto'] == 30003
+
+
+def test_resumen_de_estado_y_contexto_estatico(repo_temporal):
+    p = proyectos.crear('Resumen', 'nsmb')
+    with open(os.path.join(rutas.proyecto_dir('resumen'), 'brief.md'), 'w', encoding='utf-8') as f:
+        f.write('# Brief\n\nMario cruza la pantalla y se cae.\n')
+    proyectos.fase('resumen', 'guion', 'validar', nota='Guion de 20 s', archivos=['guion.md'])
+    proyectos.pedir_cambio('resumen', 'Más corto', [], [])
+    r = proyectos.resumen_estado('resumen')
+    assert 'Mario cruza la pantalla' in r and 'Guion de 20 s' in r and 'guion.md' in r and 'Más corto' in r
+    assert r.count('\n') > 5 and '\\n' not in r
+    # el texto de sistema no cambia con el estado del proyecto: si cambiara, la caché del prompt se perdería en cada mensaje
+    a = proyectos.contexto('resumen', 'musica')
+    proyectos.fase('resumen', 'storyboard', 'en_curso')
+    assert proyectos.contexto('resumen', 'musica') == a
+
+
+def test_politica_de_rotacion_de_sesion(repo_temporal, monkeypatch):
+    from estudio import chat
+    monkeypatch.setattr(chat, 'ESTADO', str(repo_temporal / 'chats'))
+    chat._CHATS.clear()
+    p = proyectos.crear('Rota', 'nsmb')
+    c = chat.obtener('rota')
+    assert c._politica_sesion(p, 'claude', 'idea') == (None, None)                     # sin sesión no hay nada que renovar
+    c.sesiones = {'claude': 'S1', '_meta': {'claude': {'fase': 'idea', 'ctx': 35_000, 'base': 29_000}}}
+    assert c._politica_sesion(p, 'claude', 'guion') == ('S1', None)                    # cambio de fase, pero casi sin contexto extra
+    c.sesiones['_meta']['claude']['ctx'] = 70_000
+    assert c._politica_sesion(p, 'claude', 'idea') == ('S1', None)                     # misma fase: se sigue
+    assert c._politica_sesion(p, 'claude', 'guion')[0] is None                         # otra fase y 41 k de más: sesión nueva
+    assert c._politica_sesion(dict(p, optimizar=False), 'claude', 'guion') == ('S1', None)
+    c.sesiones['_meta']['claude']['ctx'] = 160_000
+    assert c._politica_sesion(p, 'claude', 'idea')[0] is None                          # demasiado grande aunque no cambie la fase
+    c.sesiones['_meta']['claude']['ctx'] = 30_000
+    c.renovar = True
+    assert c._politica_sesion(p, 'claude', 'idea') == (None, 'a petición tuya')
+    chat._CHATS.clear()
+
+
+def test_turno_abre_sesion_nueva_con_resumen(repo_temporal, monkeypatch):
+    from estudio import agentes, chat
+    monkeypatch.setattr(chat, 'ESTADO', str(repo_temporal / 'chats'))
+    chat._CHATS.clear()
+    proyectos.crear('Giro', 'nsmb')
+    c = chat.obtener('giro')
+    visto = []
+
+    def falso(agente, texto, modelo, esfuerzo, permisos, sesion, cwd, entorno, emitir, sistema=None, registrar_proc=None):
+        visto.append((texto, sesion))
+        emitir({'t': 'fin', 'uso': {'entrada': 1, 'salida': 1, 'cache_leida': 0, 'cache_escrita': 0}, 'contexto': 20_000 + 40_000 * len(visto), 'coste': 0.0})
+        return 'S%d' % len(visto)
+    monkeypatch.setattr(agentes, 'ejecutar_turno', falso)
+
+    def turno(texto):
+        c.ocupado = True
+        c._turno(texto)
+    turno('hola')
+    assert visto[0] == ('hola', None)                                                  # primera vez: sin resumen
+    turno('sigue')
+    assert visto[1] == ('sigue', 'S1')                                                 # misma fase: se reanuda
+    proyectos.fase('giro', 'idea', 'aprobada')
+    proyectos.modificar('giro', lambda p: p.update(fase_actual='guion'))
+    turno('ahora el guion')
+    assert visto[2][1] is None and visto[2][0].endswith('ahora el guion') and 'Estado actual del proyecto' in visto[2][0]
+    assert any(e.get('t') == 'sistema' and 'Sesión nueva' in e['texto'] for e in c.eventos)
+    assert c.meta('claude')['base'] == 140_000 and c.sesiones['claude'] == 'S3'
+    c.renovar_sesion()                                                                  # a petición del usuario, con el agente libre
+    assert 'claude' not in c.sesiones and c.contexto_actual() == 0
+    chat._CHATS.clear()

@@ -154,6 +154,8 @@ async function pantallaProyecto(slug) {
       h('label', {}, 'Esfuerzo'), selector(ag.esfuerzos.map(e => [e, e]), p.esfuerzo, v => guardar('esfuerzo', v)),
       h('label', {}, 'Ritmo'), selector(Object.entries(ESTADO.ritmos).map(([k, t]) => [k, t.split(':')[0]]), p.ritmo, v => guardar('ritmo', v)),
       h('label', {}, 'Permisos del agente'), selector(Object.entries(ESTADO.permisos).map(([k, t]) => [k, t.split(':')[0]]), p.permisos || 'normal', v => guardar('permisos', v)),
+      h('label', { title: 'Al cambiar de fase, si la conversación ha crecido mucho, el agente sigue en una sesión nueva con un resumen del proyecto en vez de releer todo el historial.' }, 'Ahorro de tokens'),
+      selector([['si', 'Sesiones nuevas al cambiar de fase'], ['no', 'Una sola sesión larga']], p.optimizar === false ? 'no' : 'si', v => guardar('optimizar', v === 'si')),
     ], { clase: 'ajustes-pop' });
   }
 
@@ -542,7 +544,22 @@ async function pantallaProyecto(slug) {
       const f = c.id === 'principal' ? null : fase(c.id);
       return h('button', { class: 'tab-chat' + (st.carril === c.id ? ' on' : ''), onclick: () => cambiarCarril(c.id), title: f ? 'Agente que trabaja en paralelo en «' + f.nombre + '»' : 'Agente principal' },
         ocupado ? spinner('peq') : null, f ? (ICONO_FASE[f.id] + ' ' + f.nombre) : 'Principal');
-    }), h('span', { class: 'grow' }), h('button', { class: 'icono', title: 'Ocultar el chat', onclick: () => alternarChat() }, '⟩'));
+    }), h('span', { class: 'grow' }), chipContexto(), h('button', { class: 'icono', title: 'Ocultar el chat', onclick: () => alternarChat() }, '⟩'));
+  }
+
+  // Tamaño del contexto de la sesión del agente que se ve: cada mensaje lo vuelve a leer entero, así que cuanto más crece, más cuesta seguir.
+  function chipContexto() {
+    const c = vp.carriles.find(x => x.id === st.carril);
+    const ctx = c ? c.contexto || 0 : 0;
+    if (!ctx) return null;
+    const nivel = ctx > 120000 ? 'alto' : ctx > 60000 ? 'medio' : 'bajo';
+    const ahorro = vp.proyecto.optimizar !== false;
+    return h('span', { class: 'ctx ' + nivel, title: 'Contexto de la sesión: ' + ctx.toLocaleString('es-ES') + ' tokens que el agente relee en cada mensaje. ' +
+      (ahorro ? 'Al cambiar de fase con mucho contexto se abre una sesión nueva con un resumen del proyecto.' : 'El ahorro de sesiones está desactivado en Ajustes.') },
+      'ctx ' + fmtTok(ctx),
+      h('button', { class: 'icono', title: 'Abrir una sesión nueva en el próximo mensaje (el agente parte del resumen del proyecto)', onclick: async () => {
+        try { await api('/api/proyectos/' + slug + '/sesion/nueva?carril=' + st.carril, { metodo: 'POST' }); avisar('La próxima respuesta empezará en una sesión nueva.'); pend(); } catch (e) { avisar(e.message); }
+      } }, '↻'));
   }
 
   function cambiarCarril(id) {
