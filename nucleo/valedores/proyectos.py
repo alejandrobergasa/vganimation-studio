@@ -389,6 +389,8 @@ def contexto(slug, carril=None):
         '- Variable de entorno `VALEDORES_PROYECTO=%s` activa: los motores ya dejan el vídeo en `salida/%s/` y los temporales en `proyectos/%s/trabajo/`.' % (slug, slug, slug),
         '- Sigue la skill `crear-video`' + (' y la del juego `%s`.' % skill if skill else '.'),
         '- Los assets extraídos están en `biblioteca/%s/extraidos/` (si faltan: `python valedores.py extraer %s`).' % (m['id'], m['id']),
+        '- Lecciones de correcciones anteriores: lee `juegos/%s/lecciones.md` y `conocimiento/lecciones.md` si existen, y aplícalas desde el principio.'
+        ' Cuando el usuario te corrija algo que valga para futuros vídeos, regístralo: `python valedores.py leccion %s "<regla>" --causa "<por qué fallaba>"`.' % (m['id'], slug),
         '- El estudio dibuja el mapa del vídeo con `proyecto.json`: registra cada concepto con `python valedores.py elemento` y cada fase con `fase`'
         ' (con `--eta` en segundos cuando algo vaya a tardar); los comandos largos, con `python valedores.py ejecutar`.',
     ]

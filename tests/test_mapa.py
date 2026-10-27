@@ -322,3 +322,63 @@ def test_turno_abre_sesion_nueva_con_resumen(repo_temporal, monkeypatch):
     c.renovar_sesion()                                                                  # a petición del usuario, con el agente libre
     assert 'claude' not in c.sesiones and c.contexto_actual() == 0
     chat._CHATS.clear()
+
+
+# ---------------------------------------------------------------- lecciones de las correcciones
+@pytest.fixture
+def juegos_temporales(repo_temporal, monkeypatch):
+    """`juegos/` y `conocimiento/` de mentira (con el manifiesto real de NSMB) para no escribir lecciones en el repo de verdad."""
+    import shutil
+    raiz = repo_temporal / 'repo'
+    (raiz / 'juegos' / 'nsmb').mkdir(parents=True)
+    shutil.copy(os.path.join(rutas.JUEGOS, 'nsmb', 'juego.json'), raiz / 'juegos' / 'nsmb' / 'juego.json')
+    (raiz / 'juegos' / 'nsmb' / 'CONOCIMIENTO.md').write_text('# NSMB\n\n## Otra cosa\n\ntexto\n', encoding='utf-8')
+    monkeypatch.setattr(rutas, 'JUEGOS', str(raiz / 'juegos'))
+    monkeypatch.setattr(rutas, 'REPO', str(raiz))
+    return raiz
+
+
+def test_lecciones_se_cuentan_y_se_promueven(juegos_temporales):
+    from valedores import lecciones
+    proyectos.crear('Lec', 'nsmb')
+    l, nueva, _ = lecciones.registrar('nsmb', 'Pon los textos a la derecha del retrato; no los centres', 'tapaban la cara', 'lec', 1)
+    assert nueva and l['veces'] == 1
+    l2, nueva, _ = lecciones.registrar('nsmb', 'Pon los textos a la derecha del retrato, no los centres.', None, 'lec', 1)
+    assert not nueva and l2['veces'] == 1                                   # misma corrección: no se cuenta dos veces
+    l3, nueva, _ = lecciones.registrar('nsmb', 'pon los textos a la derecha del retrato; no los centres', None, 'otro', 2)
+    assert not nueva and l3['id'] == l['id'] and l3['veces'] == 2           # otro vídeo con la misma corrección: sube el contador
+    lecciones.registrar('nsmb', 'Normaliza el audio a -16 LUFS antes de mezclar la música', None, 'lec', 2)
+    md = open(os.path.join(rutas.juego_dir('nsmb'), 'lecciones.md'), encoding='utf-8').read()
+    assert md.index('retrato') < md.index('LUFS') and '(×2)' in md          # las más repetidas, primero
+    with pytest.raises(ValueError):
+        lecciones.registrar('nsmb', 'corta')
+    lecciones.promover('nsmb', l['id'])
+    conocimiento = open(os.path.join(rutas.juego_dir('nsmb'), 'CONOCIMIENTO.md'), encoding='utf-8').read()
+    assert lecciones.SECCION in conocimiento and 'a la derecha del retrato' in conocimiento
+    assert [x['id'] for x in lecciones.activas('nsmb')] != [l['id']] and 'retrato' not in open(os.path.join(rutas.juego_dir('nsmb'), 'lecciones.md'), encoding='utf-8').read()
+    lecciones.registrar('nsmb', 'Pon los textos a la derecha del retrato; no los centres', None, 'tercero', 3)      # vuelve a fallar: se reabre
+    assert l['id'] in [x['id'] for x in lecciones.activas('nsmb')]
+    assert conocimiento.count('a la derecha del retrato') == 1
+
+
+def test_madurez_y_cli_leccion(juegos_temporales, capsys):
+    from valedores import cli, madurez
+    proyectos.crear('Real', 'nsmb')
+    assert cli.principal(['leccion', 'real', 'Mantén el texto dentro de la zona segura del vídeo vertical', '--comun']) == 0
+    assert 'nueva' in capsys.readouterr().out
+    m = {x['juego']: x for x in madurez.todos()}['nsmb']
+    assert m['videos_reales'] == 1 and m['nivel'] in ('baja', 'media', 'alta')
+    assert cli.principal(['lecciones']) == 0 and 'zona segura' in capsys.readouterr().out
+
+
+def test_servidor_lecciones(servidor, juegos_temporales):
+    from valedores import lecciones
+    cab = {'X-Estudio': '1', 'Content-Type': 'application/json'}
+    lecciones.registrar('nsmb', 'Deja un segundo de silencio al final de la música del vídeo', 'cortaba seco', 'x', 1)
+    cod, cuerpo = _pedir(servidor + '/api/lecciones?juego=nsmb')
+    ls = json.loads(cuerpo)
+    assert cod == 200 and len(ls) == 1 and ls[0]['ambito'] == 'nsmb'
+    assert _pedir(servidor + '/api/lecciones/nsmb/%d/promover' % ls[0]['id'], 'POST', None, {})[0] == 403           # sin X-Estudio
+    assert _pedir(servidor + '/api/lecciones/nsmb/%d/promover' % ls[0]['id'], 'POST', {}, cab)[0] == 200
+    assert json.loads(_pedir(servidor + '/api/lecciones?juego=nsmb')[1]) == []
+    assert _pedir(servidor + '/api/lecciones/inventado/1/promover', 'POST', {}, cab)[0] == 404

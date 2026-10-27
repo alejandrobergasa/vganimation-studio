@@ -287,13 +287,13 @@ async function pantallaProyecto(slug) {
   // ================================================================ pestañas
   function pintarPestanas() {
     const nc = cambiosPendientes().length;
-    pestanasEl.replaceChildren(...[['detalle', 'Detalle'], ['cambios', 'Cambios' + (vp.cambios.length ? ' (' + vp.cambios.length + ')' : ''), nc], ['ficheros', 'Ficheros']]
+    pestanasEl.replaceChildren(...[['detalle', 'Detalle'], ['cambios', 'Cambios' + (vp.cambios.length ? ' (' + vp.cambios.length + ')' : ''), nc], ['aprender', 'Aprendizajes'], ['ficheros', 'Ficheros']]
       .map(([id, txt, n]) => h('button', { class: 'pestana' + (st.pestana === id ? ' on' : ''), role: 'tab', onclick: () => { st.pestana = id; pintarPestanas(); pintarCuerpo(); } },
         txt, n ? h('span', { class: 'ins alerta' }, n) : null)));
   }
 
   function pintarCuerpo() {
-    const f = st.pestana === 'detalle' ? detalle() : st.pestana === 'cambios' ? listaCambios() : ficherosProyecto();
+    const f = st.pestana === 'detalle' ? detalle() : st.pestana === 'cambios' ? listaCambios() : st.pestana === 'aprender' ? aprendizajes() : ficherosProyecto();
     cuerpoEl.replaceChildren(f);
   }
 
@@ -411,6 +411,26 @@ async function pantallaProyecto(slug) {
 
   async function estadoCambio(c, estado) {
     try { await api('/api/proyectos/' + slug + '/cambio/' + c.id, { metodo: 'PATCH', json: { estado } }); pend(); } catch (e) { avisar(e.message); }
+  }
+
+  // ---- aprendizajes: reglas que el agente ha sacado de tus correcciones
+  function aprendizajes() {
+    const caja = h('div', { class: 'aprender' }, h('p', { class: 'suave' }, 'Cargando…'));
+    const accion = async (l, que) => {
+      try { await api('/api/lecciones/' + l.ambito + '/' + l.id + '/' + que, { metodo: 'POST' }); avisar(que === 'promover' ? 'Regla guardada en el conocimiento permanente.' : 'Regla descartada.'); pintarCuerpo(); }
+      catch (e) { avisar(e.message); }
+    };
+    api('/api/lecciones?juego=' + encodeURIComponent(vp.proyecto.juego)).then(ls => {
+      const cab = h('div', {}, h('h3', {}, 'Lo que el agente ha aprendido de tus correcciones'),
+        h('p', { class: 'suave' }, 'Cada vez que corriges algo que vale para futuros vídeos, el agente anota una regla y la lee al empezar. ' +
+          '«Guardar» la pasa al conocimiento permanente del juego; «Descartar» la borra si no era una regla, sino un gusto de ese vídeo. Si una regla se repite, sube su contador (×N).'));
+      if (!ls.length) { caja.replaceChildren(cab, h('p', {}, 'Todavía no hay reglas pendientes de revisar.')); return; }
+      caja.replaceChildren(cab, ...ls.map(l => h('div', { class: 'leccion' },
+        h('div', { class: 'leccion-cab' }, h('span', { class: 'tag' }, l.ambito === 'comun' ? 'todos los juegos' : 'este juego'), l.veces > 1 ? h('b', {}, '×' + l.veces) : null, h('span', { class: 'grow' }),
+          h('button', { class: 'ok', onclick: () => accion(l, 'promover') }, 'Guardar'), h('button', { class: 'texto', onclick: () => accion(l, 'descartar') }, 'Descartar')),
+        h('p', { class: 'cambio-txt' }, l.regla), l.causa ? h('p', { class: 'suave' }, 'Por qué: ' + l.causa) : null)));
+    }).catch(e => caja.replaceChildren(h('p', { class: 'suave' }, 'No se pudieron cargar: ' + e.message)));
+    return caja;
   }
 
   // ---- ficheros

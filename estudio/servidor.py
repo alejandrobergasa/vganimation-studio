@@ -17,7 +17,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
-from valedores import doctor, extraer, juegos, proyectos, rutas, tareas
+from valedores import doctor, extraer, juegos, lecciones, proyectos, rutas, tareas
 
 from . import agentes, chat
 
@@ -225,6 +225,8 @@ def instrucciones_cambio(slug, c):
         '2. Calcula el alcance real. Si toca fases o elementos que no están marcados, márcalos (`fase … cambios --nota …`, `elemento … --estado cambios`) y díselo al usuario.',
         '3. Rehaz solo lo necesario, en orden de dependencias (guion → música y storyboard → previsualización → render → revisión). Cada fase o elemento que rehagas: `en_curso` (con `--eta`) y, al acabar, `validar`.',
         '4. Termina con `python valedores.py cambio %s %d hecho`. En paso a paso, para al terminar la fase objetivo y pide validación; en «de una», sigue con las posteriores.' % (slug, c['id']),
+        '5. Pregúntate por qué hizo falta este cambio. Si la causa vale para otros vídeos (un criterio, un fallo del motor, un hábito tuyo), regístralo en una frase imperativa:'
+        ' `python valedores.py leccion %s "<haz X; no hagas Y>" --causa "<por qué falló>" --cambio %d`. Si solo era un gusto de este vídeo, no registres nada.' % (slug, c['id']),
     ]
     return '\n'.join(lineas)
 
@@ -402,6 +404,9 @@ class Handler(BaseHTTPRequestHandler):
                 j = JOBS.get(m.group(1)) or {'lineas': [], 'estado': 'libre'}
                 d = int(q.get('desde', 0) or 0)
                 return self._json({'estado': j['estado'], 'lineas': j['lineas'][d:], 'total': len(j['lineas'])})
+        if ruta == '/api/lecciones':
+            ambitos = [lecciones.COMUN] + ([q['juego']] if q.get('juego') in rutas.juegos() else [])
+            return self._json([dict(l, ambito=a) for a in ambitos for l in lecciones.activas(a)])
         if ruta == '/api/doctor':
             return self._json([{'nivel': n, 'texto': t} for n, t in doctor.comprobar()])
         return self._error(404, 'No existe')
@@ -553,6 +558,12 @@ class Handler(BaseHTTPRequestHandler):
             carril = q.get('carril') or chat.PRINCIPAL
             chat.obtener(m.group(1), carril).parar()
             return self._json({'ok': True})
+        m = re.fullmatch(r'/api/lecciones/([\w-]+)/(\d+)/(promover|descartar)', ruta)
+        if m and metodo == 'POST':
+            if m.group(1) != lecciones.COMUN and m.group(1) not in rutas.juegos():
+                return self._error(404, 'No existe el juego')
+            fn = lecciones.promover if m.group(3) == 'promover' else lecciones.descartar
+            return self._json(fn(m.group(1), int(m.group(2))))
         m = re.fullmatch(r'/api/proyectos/([\w-]+)/sesion/nueva', ruta)
         if m and metodo == 'POST':
             if not proyectos.existe(m.group(1)):

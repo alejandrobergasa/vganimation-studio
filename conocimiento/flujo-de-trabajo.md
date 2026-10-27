@@ -45,6 +45,14 @@ siguiente mensaje abre una sesión nueva y el agente recibe antes un resumen del
 desactivar en Ajustes → *Ahorro de tokens* (`optimizar` en `proyecto.json`). El texto de sistema por carril es estático a propósito: si cambiara
 entre mensajes se perdería la caché del prompt. Detalles para el agente en la skill `crear-video`, sección «Ahorro de tokens».
 
+## Aprendizaje a partir de las correcciones
+Las correcciones del usuario son la fuente de mejora de los métodos. Cuando una corrección vale para más de un vídeo, el agente la registra
+(`python valedores.py leccion <slug> "<regla>" --causa …`) en `juegos/<id>/lecciones.json` (o `conocimiento/lecciones.json` si es común) y se pinta
+en un `lecciones.md` corto que lee al empezar. Si se repite, sube el contador. En la pestaña *Aprendizajes* del estudio el usuario decide qué
+reglas **guardar** (pasan al `CONOCIMIENTO.md` del juego, sección «Reglas de producción», o a `reglas-de-produccion.md` si son comunes) y cuáles
+**descartar**. Una regla guardada que vuelve a fallar se reabre sola. `python valedores.py madurez` resume por juego motor, ejemplos, vídeos reales,
+correcciones y coste por vídeo y lecciones: el objetivo es que las correcciones por vídeo bajen con el tiempo.
+
 ## Entradas y salidas
 - Lo que el usuario adjunta en el chat del estudio llega al agente como lista de rutas bajo el mensaje («Ficheros adjuntos por el usuario»), ya guardado en `entrada/<slug>/`.
   Imágenes: ábrelas con la herramienta de lectura de imágenes. Vídeos: `python valedores.py revisar hoja <ruta>` (y `revisar audio`).

@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 
-from . import doctor, extraer, juegos, proyectos, revisar, rutas, skills, tareas
+from . import doctor, extraer, juegos, lecciones, madurez, proyectos, revisar, rutas, skills, tareas
 
 
 def _utf8():
@@ -117,6 +117,45 @@ def cmd_cambio(a):
     return 0
 
 
+def cmd_leccion(a):
+    if not proyectos.existe(a.slug):
+        print('No existe el proyecto %s' % a.slug)
+        return 2
+    juego = lecciones.COMUN if a.comun else proyectos.leer(a.slug)['juego']
+    lec, nueva, activas = lecciones.registrar(juego, a.regla, a.causa, a.slug, a.cambio)
+    print('Lección %s %s de %s (×%d)%s' % (lec['id'], 'nueva' if nueva else 'repetida', juego, lec['veces'], ': ' + lec['regla']))
+    if activas > lecciones.MAX_ACTIVAS:
+        print('Hay %d lecciones activas (máx. %d): avisa al usuario para consolidarlas (`python valedores.py lecciones`).' % (activas, lecciones.MAX_ACTIVAS))
+    return 0
+
+
+def cmd_lecciones(a):
+    juegos_ids = [a.juego] if a.juego else [lecciones.COMUN] + sorted(rutas.juegos())
+    if a.accion in ('promover', 'descartar'):
+        if not a.juego or a.id is None:
+            print('Uso: lecciones %s --juego <id|comun> <id>' % a.accion)
+            return 2
+        lec = (lecciones.promover if a.accion == 'promover' else lecciones.descartar)(a.juego, a.id)
+        print('Lección %s → %s: %s' % (lec['id'], lec['estado'], lec['regla']))
+        return 0
+    for j in juegos_ids:
+        for l in lecciones.activas(j):
+            print('[%s #%d ×%d] %s' % (j, l['id'], l['veces'], l['regla']))
+    return 0
+
+
+def cmd_madurez(a):
+    print('%-18s %-6s %6s %5s %6s %5s %8s %9s %9s' % ('juego', 'nivel', 'líneas', 'ejem.', 'vídeos', 'pend.', 'camb/víd', 'coste/víd', 'lecc.act/prom'))
+    for m in madurez.todos():
+        print('%-18s %-6s %6d%s %5d %6d %5d %8s %9s %9s' % (
+            m['juego'], m['nivel'], m['loc'], '*' if m['motor_compartido'] else ' ', m['ejemplos'], m['videos_reales'], m['pendientes'],
+            '—' if m['cambios_por_video'] is None else '%.1f' % m['cambios_por_video'],
+            '—' if m['coste_por_video'] is None else '%.2f $' % m['coste_por_video'],
+            '%d/%d' % (m['lecciones_activas'], m['lecciones_promovidas'])))
+    print('* motor compartido (nucleo/valedores/*_video_nds.py). Vídeos = proyectos reales (sin las pruebas de motor).')
+    return 0
+
+
 def cmd_ejecutar(a):
     if not proyectos.existe(a.slug):
         print('No existe el proyecto %s' % a.slug)
@@ -218,6 +257,22 @@ def principal(argv=None):
     c.add_argument('estado', choices=proyectos.ESTADOS_CAMBIO)
     c.add_argument('--nota', default=None)
     c.set_defaults(f=cmd_cambio)
+
+    le = sub.add_parser('leccion', help='registra una regla aprendida de una corrección del usuario (la leerá el agente en los próximos vídeos)')
+    le.add_argument('slug')
+    le.add_argument('regla', help='una frase imperativa: «haz X; no hagas Y»')
+    le.add_argument('--causa', default=None, help='por qué fallaba')
+    le.add_argument('--cambio', type=int, default=None, help='número de la petición de cambio que la originó')
+    le.add_argument('--comun', action='store_true', help='vale para todos los juegos, no solo para el del proyecto')
+    le.set_defaults(f=cmd_leccion)
+
+    ls = sub.add_parser('lecciones', help='lista las lecciones activas; promover (al conocimiento permanente) o descartar una')
+    ls.add_argument('accion', nargs='?', choices=['listar', 'promover', 'descartar'], default='listar')
+    ls.add_argument('id', nargs='?', type=int)
+    ls.add_argument('--juego', default=None, help='id de juego o «comun»')
+    ls.set_defaults(f=cmd_lecciones)
+
+    sub.add_parser('madurez', help='madurez de cada juego: motor, ejemplos, vídeos, correcciones y coste por vídeo, lecciones').set_defaults(f=cmd_madurez)
 
     x = sub.add_parser('ejecutar', help='ejecuta un comando con el proyecto activo (salida/ y trabajo/ del proyecto)')
     x.add_argument('slug')

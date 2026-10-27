@@ -76,6 +76,21 @@ Cada mensaje vuelve a leer toda la conversación, así que lo que se queda en el
 - Salida de comandos: recórtala (`| tail -n 20`, `| head`, `--quiet`); nunca vuelques logs enteros de render o de extracción.
 - Respuestas de ≤ 6 líneas; el detalle va en el fichero, no en el chat.
 
+## 1d. Aprender de las correcciones
+Cada corrección del usuario (un cambio pedido en el estudio, un «no, así no» en el chat, una fase devuelta con `cambios`) es información sobre
+cómo quiere que trabajes. Para que el siguiente vídeo no repita el fallo:
+1. **Al empezar**, lee `juegos/<id>/lecciones.md` y `conocimiento/lecciones.md` si existen (son cortos) y aplícalas desde la primera versión.
+2. **Al cerrar una corrección**, pregúntate por qué hizo falta. Si la causa sirve para otros vídeos (un criterio visual, un fallo del motor, un
+   hábito tuyo, un límite del juego), regístrala en **una frase imperativa**:
+   `python valedores.py leccion <slug> "Pon los textos a la derecha del retrato; no los centres" --causa "tapaban la cara" [--cambio N] [--comun]`
+   - `--comun` solo si vale para cualquier juego. Una idea por lección, ≤ 300 caracteres, sin datos del vídeo concreto.
+   - Si es un gusto de este vídeo (el color de un fondo, el texto de un diálogo), **no** la registres.
+   - Si ya existe una parecida, el comando la cuenta como repetición (×N): una regla que se repite es una que no estás aplicando.
+3. Las reglas que el usuario aprueba en la pestaña *Aprendizajes* pasan al `CONOCIMIENTO.md` del juego (sección «Reglas de producción»);
+   las comunes, a `conocimiento/reglas-de-produccion.md`. Si una promovida vuelve a fallar, se reabre sola.
+4. Si algo falta **en el motor** (una capacidad, un lector de formato), no lo resuelvas solo en el `video.py`: añádelo al motor del juego y
+   anótalo en su `CONOCIMIENTO.md`; así sube la madurez del juego (`python valedores.py madurez`).
+
 ## 2. Las fases y qué entregan
 | Fase | Artefacto (en `proyectos/<slug>/`) | Contenido |
 |---|---|---|
