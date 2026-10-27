@@ -168,7 +168,7 @@ def vista_proyecto(slug):
             'entradas': [{'ruta': 'entrada/' + e, 'nombre': e, 'tipo': tipo(e), 'url': url_archivo('entrada/' + e)}
                          for e in proyectos.entradas(slug)],
             'tareas': tareas.activas(slug), 'ahora': time.time(),
-            'uso': {'total': _redondear(uso['total']), 'por_fase': {f: _redondear(d) for f, d in uso['por_fase'].items()}},
+            'uso': {'total': _redondear(uso['total']), 'en_curso': _redondear(uso['en_curso']), 'por_fase': {f: _redondear(d) for f, d in uso['por_fase'].items()}},
             'carriles': [{'id': c.carril, 'ocupado': c.ocupado, 'cola': len(c.cola), 'eventos': len(c.eventos), 'contexto': c.contexto_actual()} for c in carriles],
             'paralelo': paralelo,
             'ocupado': any(c.ocupado for c in carriles), 'eventos': len(carriles[0].eventos)}

@@ -87,14 +87,19 @@ async function pantallaProyecto(slug) {
     h('div', { class: 'cab-der' }, btnUso, btnCambio, btnAjustes, btnChat));
 
   function totalConVivo() {
-    const t = Object.assign({}, vp.uso.total);
-    for (const v of Object.values(usoVivo)) for (const k of ['entrada', 'salida', 'cache_leida', 'cache_escrita']) t[k] += v[k] || 0;
+    const t = Object.assign({}, vp.uso.total), e = vp.uso.en_curso || {};
+    const campos = ['entrada', 'salida', 'cache_leida', 'cache_escrita'];
+    const vivos = Object.values(usoVivo);
+    // Lo que el agente lleva gastado en el turno que aún no ha terminado: en directo si la página lo ha ido viendo; si no (se recargó), lo que cuenta el servidor.
+    if (vivos.length) for (const v of vivos) for (const k of campos) t[k] += v[k] || 0;
+    else if (e.carriles && e.carriles.length) for (const k of campos) t[k] += e[k] || 0;
+    if (e.coste) { t.coste += e.coste; t.estimado = true; }
     return t;
   }
 
   function textoCoste(t) {
     if (!t.turnos) return fmtUsd(0);
-    if (t.coste_completo) return fmtUsd(t.coste);
+    if (t.coste_completo) return (t.estimado ? '≈ ' : '') + fmtUsd(t.coste);
     return t.coste > 0 ? '≥ ' + fmtUsd(t.coste) : 'sin precio';
   }
 
@@ -133,6 +138,7 @@ async function pantallaProyecto(slug) {
           : h('p', { class: 'suave' }, 'Todavía no hay consumo: aparecerá cuando el agente termine su primer turno.'),
         h('p', { class: 'suave pequeno' }, 'Entrada = tokens nuevos; caché = tokens reutilizados de turnos anteriores (se pagan mucho más baratos). ' +
           'Si un turno toca varias fases, su consumo se reparte según la actividad del agente en cada una. ' +
+          (t.estimado ? 'El precio con ≈ incluye lo que el agente lleva gastado en el turno en curso (estimado con la tarifa del modelo). ' : '') +
           (t.coste_completo ? '' : 'El precio solo lo informa Claude Code; para Codex defínelo en valedores.toml ([precios]). ') +
           (t.sin_desglose ? 'Hay ' + fmtTok(t.sin_desglose) + ' tokens de turnos antiguos sin desglose.' : '')),
     ], { clase: 'uso-pop' });

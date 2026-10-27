@@ -46,17 +46,33 @@ def _sumar(a, b):
     return {k: a[k] + b[k] for k in CAMPOS_USO}
 
 
+# USD por millón de tokens de los modelos de Claude, para estimar lo que el agente aún no ha cerrado (turno en curso o interrumpido): el coste
+# de un turno terminado lo informa Claude Code. La escritura de caché es la de 1 h, la que usa Claude Code. Sonnet 5.5 está comprobado contra
+# el coste real que informa el CLI (coincide al céntimo); el resto salen de la tabla de precios publicada y son orientativos.
+PRECIOS_CLAUDE = {
+    'claude-sonnet-5-5': {'entrada': 2.0, 'salida': 10.0, 'cache_leida': 0.10, 'cache_escrita': 4.0},
+    'claude-sonnet-5': {'entrada': 2.0, 'salida': 10.0, 'cache_leida': 0.10, 'cache_escrita': 4.0},
+    'claude-opus-5-5': {'entrada': 4.0, 'salida': 20.0, 'cache_leida': 0.20, 'cache_escrita': 8.0},
+    'claude-opus-5': {'entrada': 5.0, 'salida': 25.0, 'cache_leida': 0.25, 'cache_escrita': 10.0},
+    'claude-fable-5-1': {'entrada': 10.0, 'salida': 50.0, 'cache_leida': 0.50, 'cache_escrita': 20.0},
+    'claude-fable-5': {'entrada': 10.0, 'salida': 50.0, 'cache_leida': 0.50, 'cache_escrita': 20.0},
+    'claude-haiku-5-5': {'entrada': 0.10, 'salida': 0.50, 'cache_leida': 0.005, 'cache_escrita': 0.20},
+}
+
+
 def precios():
-    """Precios en USD por millón de tokens definidos por el usuario en `valedores.toml` (`[precios."modelo"]`).
-    Claude Code informa del coste real de cada turno; para otros agentes solo hay precio si se configura aquí."""
+    """Precios en USD por millón de tokens: los de Claude de arriba, más los que el usuario defina en `valedores.toml`
+    (`[precios."modelo"]`), que mandan. Para Codex solo hay precio si se configura ahí."""
+    out = {k: dict(v) for k, v in PRECIOS_CLAUDE.items()}
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'valedores.toml')
     if tomllib is None or not os.path.isfile(p):
-        return {}
+        return out
     try:
         with open(p, 'rb') as f:
-            return tomllib.load(f).get('precios', {})
+            out.update(tomllib.load(f).get('precios', {}))
     except Exception:
-        return {}
+        pass
+    return out
 
 
 def coste_estimado(modelo, uso):

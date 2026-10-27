@@ -177,8 +177,8 @@ def test_resumen_de_uso_por_fase(repo_temporal, monkeypatch):
     proyectos.crear('Gasto', 'nsmb')
     uso = {'entrada': 100, 'salida': 50, 'cache_leida': 1000, 'cache_escrita': 10}
     c = chat.obtener('gasto')
-    c.emitir({'t': 'fin', 'coste': 0.10, 'uso': uso, 'reparto': {'guion': 1.0}})
-    c.emitir({'t': 'fin', 'coste': 0.20, 'uso': uso, 'reparto': {'guion': 0.5, 'musica': 0.5}})
+    c.emitir({'t': 'fin', 'coste': 0.10, 'coste_acum': 0.10, 'uso': uso, 'reparto': {'guion': 1.0}})
+    c.emitir({'t': 'fin', 'coste': 0.20, 'coste_acum': 0.30, 'uso': uso, 'reparto': {'guion': 0.5, 'musica': 0.5}})
     c.emitir({'t': 'fin', 'coste': None, 'uso': uso, 'reparto': {'musica': 1.0}})
     c.emitir({'t': 'fin', 'coste': 0.01, 'tokens': 77})                      # historial antiguo sin desglose
     r = chat.resumen_uso('gasto')
@@ -382,3 +382,75 @@ def test_servidor_lecciones(servidor, juegos_temporales):
     assert _pedir(servidor + '/api/lecciones/nsmb/%d/promover' % ls[0]['id'], 'POST', {}, cab)[0] == 200
     assert json.loads(_pedir(servidor + '/api/lecciones?juego=nsmb')[1]) == []
     assert _pedir(servidor + '/api/lecciones/inventado/1/promover', 'POST', {}, cab)[0] == 404
+
+
+# ---------------------------------------------------------------- coste por turno (Claude da el acumulado de la sesión)
+def _chat_falso(monkeypatch, repo_temporal, nombre, turnos):
+    """Chat cuyo agente devuelve, por turno, (coste acumulado, uso, contexto) como lo haría Claude Code con --resume."""
+    from estudio import agentes, chat
+    monkeypatch.setattr(chat, 'ESTADO', str(repo_temporal / 'chats'))
+    chat._CHATS.clear()
+    proyectos.crear(nombre, 'nsmb')
+    c = chat.obtener(nombre)
+    cola = list(turnos)
+
+    def falso(agente, texto, modelo, esfuerzo, permisos, sesion, cwd, entorno, emitir, sistema=None, registrar_proc=None):
+        acum, uso, ctx = cola.pop(0)
+        emitir({'t': 'fin', 'coste': acum, 'uso': uso, 'contexto': ctx, 'modelo': 'claude-sonnet-5-5'})
+        return 'S1'
+    monkeypatch.setattr(agentes, 'ejecutar_turno', falso)
+    return c
+
+
+def test_coste_de_claude_es_la_diferencia_con_el_turno_anterior(repo_temporal, monkeypatch):
+    from estudio import chat
+    u = {'entrada': 1, 'salida': 10, 'cache_leida': 100, 'cache_escrita': 10}
+    c = _chat_falso(monkeypatch, repo_temporal, 'acum', [(1.0, u, 20_000), (1.5, u, 20_000), (4.0, u, 20_000)])
+    for t in ('uno', 'dos', 'tres'):
+        c.ocupado = True
+        c._turno(t)
+    costes = [e['coste'] for e in c.eventos if e['t'] == 'fin']
+    assert costes == pytest.approx([1.0, 0.5, 2.5])                       # no 1,0 + 1,5 + 4,0
+    assert chat.resumen_uso('acum')['total']['coste'] == pytest.approx(4.0)
+    chat._CHATS.clear()
+
+
+def test_resumen_de_uso_corrige_el_historial_acumulado(repo_temporal, monkeypatch):
+    from estudio import chat
+    monkeypatch.setattr(chat, 'ESTADO', str(repo_temporal / 'chats'))
+    chat._CHATS.clear()
+    proyectos.crear('Viejo', 'nsmb')
+    c = chat.obtener('viejo')
+    for acum in (0.27, 0.39, 0.81, 7.07):                                  # así quedó guardado antes: el acumulado de la sesión en cada turno
+        c.emitir({'t': 'fin', 'coste': acum, 'tokens': 1000})
+    assert chat.resumen_uso('viejo')['total']['coste'] == pytest.approx(7.07)
+    chat._CHATS.clear()
+
+
+def test_consumo_del_turno_en_curso_y_del_interrumpido(repo_temporal, monkeypatch):
+    from estudio import agentes, chat
+    monkeypatch.setattr(chat, 'ESTADO', str(repo_temporal / 'chats'))
+    chat._CHATS.clear()
+    proyectos.crear('Curso', 'nsmb')
+    proyectos.modificar('curso', lambda p: p.update(modelo='claude-sonnet-5-5'))
+    c = chat.obtener('curso')
+
+    def agente_que_se_cae(agente, texto, modelo, esfuerzo, permisos, sesion, cwd, entorno, emitir, sistema=None, registrar_proc=None):
+        emitir({'t': 'uso_vivo', 'entrada': 10, 'salida': 1_000_000, 'cache_leida': 0, 'cache_escrita': 0})
+        r = chat.resumen_uso('curso')                                       # a mitad del turno ya cuenta
+        assert r['en_curso']['salida'] == 1_000_000 and r['en_curso']['coste'] == pytest.approx(10.0, abs=0.01) and r['en_curso']['carriles'] == ['principal']
+        raise RuntimeError('se cayó')                                       # sin `result`
+    monkeypatch.setattr(agentes, 'ejecutar_turno', agente_que_se_cae)
+    c.ocupado = True
+    c._turno('hola')
+    fin = [e for e in c.eventos if e['t'] == 'fin']
+    assert len(fin) == 1 and fin[0]['interrumpido'] and fin[0]['coste'] == pytest.approx(10.0, abs=0.01)
+    r = chat.resumen_uso('curso')
+    assert r['total']['salida'] == 1_000_000 and r['total']['coste'] == pytest.approx(10.0, abs=0.01) and r['en_curso']['carriles'] == []
+    chat._CHATS.clear()
+
+
+def test_precio_de_sonnet_coincide_con_el_que_informa_claude():
+    from estudio import agentes
+    uso = {'entrada': 136, 'salida': 101087, 'cache_leida': 10018195, 'cache_escrita': 214364}      # turno real de bolas_inazuma
+    assert agentes.coste_estimado('claude-sonnet-5-5', uso) == pytest.approx(2.8704175, abs=1e-6)

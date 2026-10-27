@@ -57,6 +57,9 @@ class Chat:
         self.ocupado = False
         self.parado = False
         self.cola = []                 # mensajes escritos mientras el agente trabaja: se envían uno a uno al terminar
+        self.vivo = None               # consumo del turno en curso (aún sin `fin`), para no perderlo si el turno se interrumpe o se recarga la página
+        self.fin_visto = False
+        self._info = {}
         self.renovar = False           # el usuario ha pedido una sesión nueva para el próximo turno
         self.sesiones = {}             # {agente: id de sesión, '_meta': {agente: {fase, ctx, base, turnos}}}
         if os.path.isfile(self.f_log):
@@ -197,8 +200,20 @@ class Chat:
             return None, 'cambio de fase (el contexto era de %d k tokens)' % (m.get('ctx', 0) // 1000)
         return sesion, None
 
+    def _coste_previo(self, agente):
+        """Coste acumulado que Claude Code ya había informado para la sesión que se reanuda.
+        Su `total_cost_usd` es el de TODA la sesión, no el del turno: el de un turno es la diferencia con el anterior."""
+        m = self.meta(agente)
+        if 'coste_acum' in m:
+            return m['coste_acum']
+        for e in reversed(self.eventos):                                  # sesiones anteriores a este registro: el último `fin` real
+            if e.get('t') == 'fin' and not e.get('interrumpido') and not e.get('coste_estimado'):
+                return e.get('coste_acum', e.get('coste')) or 0.0
+        return 0.0
+
     def _turno(self, texto, reintento=False):
         try:
+            self.vivo, self.fin_visto = None, False
             p = proyectos.leer(self.slug)
             agente = p.get('agente', 'claude')
             inicial = self.carril if self.carril != PRINCIPAL else p.get('fase_actual', 'idea')
@@ -215,16 +230,26 @@ class Chat:
             hubo_error = []
             ctx = {}
             actividad = {}
+            self._info = {'agente': agente, 'modelo': p.get('modelo'), 'inicial': inicial, 'actividad': actividad}
+            previo = self._coste_previo(agente) if sesion and agente == 'claude' else 0.0
 
             def emitir(e):
                 if self.parado and e['t'] == 'error':
                     return
+                if e['t'] == 'uso_vivo':
+                    self.vivo = {k: e.get(k, 0) for k in agentes.CAMPOS_USO}
                 if e['t'] == 'error':
                     hubo_error.append(e['texto'])
                 if e['t'] in ('asistente', 'herramienta'):
                     f = self._fase_ahora(inicial)
                     actividad[f] = actividad.get(f, 0) + 1
                 if e['t'] == 'fin':
+                    self.fin_visto = True
+                    if agente == 'claude' and e.get('coste') is not None:
+                        acum = e['coste']
+                        e['coste_acum'] = acum
+                        e['coste'] = acum - previo if acum >= previo else acum
+                        ctx['acum'] = acum
                     if e.get('contexto'):
                         ctx['v'] = e['contexto']
                     total = sum(actividad.values())
@@ -252,12 +277,15 @@ class Chat:
                     m['base'] = ctx.get('v', 0)       # lo que pesa una sesión recién abierta: el resto es contexto acumulado
                     m['turnos'] = 0
                 m['fase'] = inicial
+                if 'acum' in ctx:
+                    m['coste_acum'] = ctx['acum']
                 m['ctx'] = ctx.get('v', m.get('ctx', 0))
                 m['turnos'] = m.get('turnos', 0) + 1
                 self._guardar_sesiones()
         except Exception as e:  # noqa: BLE001  (se muestra en el chat)
             self.emitir({'t': 'error', 'texto': str(e)})
         finally:
+            self._cerrar_sin_resultado()
             siguiente = None
             with self.lock:
                 self.ocupado = False
@@ -273,6 +301,17 @@ class Chat:
             self.emitir({'t': 'proyecto'}, persistir=False)
             if siguiente:
                 self.enviar(siguiente['texto'], siguiente['adjuntos'], siguiente.get('instrucciones'))
+
+    def _cerrar_sin_resultado(self):
+        """Si el turno acabó sin `result` (parado, caído, error), su consumo se apunta igualmente con un `fin` estimado: ya se había gastado."""
+        uso, self.vivo = self.vivo, None
+        if self.fin_visto or not uso or not any(uso.values()):
+            return
+        info = self._info
+        total = sum(info['actividad'].values())
+        self.emitir({'t': 'fin', 'coste': agentes.coste_estimado(info['modelo'], uso), 'coste_estimado': True, 'interrumpido': True, 'duracion': 0,
+                     'tokens': uso['entrada'] + uso['salida'], 'uso': uso, 'modelo': info['modelo'], 'agente': info['agente'], 'carril': self.carril,
+                     'reparto': {f: n / total for f, n in info['actividad'].items()} if total else {info['inicial']: 1.0}})
 
     def parar(self):
         self.parado = True
@@ -318,12 +357,19 @@ def resumen_uso(slug):
     total = {k: 0 for k in agentes.CAMPOS_USO}
     total.update(coste=0.0, turnos=0, coste_completo=True, sin_desglose=0)
     por_fase = {}
+    en_curso = dict.fromkeys(agentes.CAMPOS_USO, 0)
+    en_curso.update(coste=0.0, carriles=[])
     for c in carriles_de(slug):
         with c.lock:
             fines = [e for e in c.eventos if e.get('t') == 'fin']
+        previo = 0.0                      # historial anterior al registro por turno: Claude daba el coste acumulado de la sesión
         for e in fines:
             uso = e.get('uso')
             coste = e.get('coste')
+            if 'coste_acum' in e:
+                previo = e['coste_acum']
+            elif coste is not None and e.get('agente', 'claude') == 'claude' and not e.get('coste_estimado'):
+                coste, previo = (coste - previo if coste >= previo else coste), coste
             total['turnos'] += 1
             if not uso:                                    # historial anterior al desglose
                 total['sin_desglose'] += e.get('tokens') or 0
@@ -340,4 +386,11 @@ def resumen_uso(slug):
                     _sumar_uso(d, uso, w)
                 if coste is not None:
                     d['coste'] += coste * w
-    return {'total': total, 'por_fase': por_fase}
+        vivo = c.vivo if c.ocupado else None
+        if vivo and any(vivo.values()):
+            _sumar_uso(en_curso, vivo)
+            en_curso['carriles'].append(c.carril)
+            est = agentes.coste_estimado(c._info.get('modelo'), vivo)
+            if est is not None:
+                en_curso['coste'] += est
+    return {'total': total, 'por_fase': por_fase, 'en_curso': en_curso}
