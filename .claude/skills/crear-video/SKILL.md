@@ -19,6 +19,10 @@ que tengas (Read en Claude Code, view_image en Codex). **Nada se da por bueno si
    (no gasta tokens, tarda minutos). Si falta la ROM, díselo al usuario: va en `roms/`.
 5. Ficheros del usuario: `entrada/<slug>/` y `entrada/` (fotos, vídeos, audios, assets). **Ábrelos y míralos**
    antes de decir que falta algo. Nunca los modifiques; si son reutilizables, copia a `biblioteca/<id>/personalizados/`.
+6. Si aporta fotos de personas, lee `conocimiento/personajes-desde-fotos.md`: son referencias de identidad para
+   crear personajes del juego, salvo petición explícita de foto directa/collage. Prepara los sprites, poses anime
+   o texturas del modelo 3D usando assets nativos como referencia. Registra cada personaje como elemento y anota
+   la excepción de assets personalizados en el brief; revisa el personaje junto al nativo antes de montar la escena.
 
 ## 1. Ritmo y puertas de validación
 `proyecto.json → ritmo`:
@@ -124,6 +128,9 @@ script; documéntalo en el `CONOCIMIENTO.md` del juego.
 ## 4. Reglas
 - Solo assets de la ROM del juego, más lo que el usuario aporte en `entrada/` (excepción concreta, anotada en el
   brief; no se extiende a otros vídeos). Si falta un recurso, dilo y propón el más cercano; no lo presentes como auténtico.
+- Las adaptaciones de fotos a personajes están autorizadas por defecto para ese vídeo. Genera con la herramienta
+  de imágenes disponible, conserva originales y documenta procedencia; no sustituyas la adaptación por caras fotográficas
+  pegadas sobre cuerpos procedurales. En 3D aplica la textura al modelo y comprueba las UV al girarlo.
 - No modificar nunca las ROMs. Texto en español con la fuente del juego.
 - Los vídeos no se versionan (`.gitignore`); los assets propios sí (`biblioteca/<id>/personalizados/`).
 - Si aprendes algo reutilizable (un truco, un fallo resuelto, una cifra del formato), añádelo al

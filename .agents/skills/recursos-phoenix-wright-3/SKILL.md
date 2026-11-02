@@ -15,4 +15,4 @@ Lee juegos/phoenix-wright-3/AGENTS.md, CONOCIMIENTO.md y conocimiento/README.md.
 
 Alcance: extracción base; Archivos originales, scripts binarios de mes_all.bin y bancos SDAT. Los gráficos empaquetados en data.bin requieren un decodificador específico.
 
-No hay motor de vídeo disponible. No trates formatos propietarios como Nitro estándar por su extensión y no prometas reconstrucción de personajes o escenas hasta implementar y revisar sus lectores.
+El motor de vídeo está disponible en video/motor.py; para componer usa la skill cinematica-phoenix-wright-3. No trates formatos propietarios como Nitro estándar por su extensión y no prometas reconstrucción de personajes o escenas hasta implementar y revisar sus lectores.

@@ -1,7 +1,7 @@
 # VGAnimation Studio
 
-Crea vídeos con los gráficos, la música y las voces de videojuegos de Nintendo DS (Animal Crossing: Wild World, New Super Mario Bros.,
-Mario Kart DS y Pokémon Platino) trabajando con un agente de IA: **Claude Code** o **Codex**, desde una interfaz con chat o desde la terminal.
+Crea vídeos con los gráficos, la música y las voces de videojuegos de Nintendo DS ([nueve juegos soportados](#extraer-assets)) trabajando con un
+agente de IA: **Claude Code** o **Codex**, desde una interfaz con chat o desde la terminal.
 
 Unifica tres repos anteriores en uno: bandejas de entrada y salida, librería de ROMs, assets por juego, base de conocimiento y skills.
 
@@ -15,25 +15,48 @@ python valedores.py doctor        # comprueba el entorno
 ```
 
 1. **Pon tus ROMs en `roms/`** (`.nds`; el nombre da igual, se reconocen por la cabecera). *Este repositorio no las incluye ni las incluirá.*
-2. **Extrae los assets**: `python valedores.py extraer` te pregunta de qué ROMs. Los assets no se suben a Git: cada uno los regenera en local con la
-   última versión del extractor (`python valedores.py estado` avisa si un extractor ha cambiado desde la última extracción).
+2. **Extrae los assets** de tus juegos: `python valedores.py extraer` te pregunta de cuáles (ver [Extraer assets](#extraer-assets)).
 3. **Abre el estudio**: `python valedores.py estudio`.
 
-## El estudio
+## Extraer assets
 
-También hay **extracción y motores de vídeo** para Inazuma Eleven (`inazuma-eleven`), Mario Party DS (`mario-party-ds`),
-Phoenix Wright: Trials and Tribulations (`phoenix-wright-3`), El profesor Layton y la villa misteriosa (`profesor-layton`)
-y Super Mario 64 DS (`super-mario-64-ds`), en horizontal y vertical. Conservan los archivos NitroFS,
-abren contenedores compatibles y convierten los recursos descritos en su `CONOCIMIENTO.md`; los formatos propietarios
-pendientes siguen como binarios originales. Para extraer estos cinco juegos:
+Una sola orden sirve para cualquier juego soportado. Necesita su ROM en `roms/` y deja los assets en `biblioteca/<juego>/extraidos/`.
 
-```powershell
-python valedores.py extraer inazuma-eleven mario-party-ds phoenix-wright-3 profesor-layton super-mario-64-ds
+```
+python valedores.py extraer                      # menú: muestra los juegos y su estado, y pregunta cuáles
+python valedores.py extraer mario-party-ds       # un juego, por su id
+python valedores.py extraer nsmb mkds            # varios
+python valedores.py extraer --pendientes         # los que no están extraídos o tienen el extractor cambiado
+python valedores.py extraer --todos              # todos
+python valedores.py extraer profesor-layton --rapido   # muestra parcial, si el juego lo admite
 ```
 
-En `biblioteca/<juego>/extraidos/`, consulta `README.md`, `catalogo.json`, `avisos.log` y `errores.log` para conocer
-la cobertura real. Los WAV exportados son muestras de instrumentos; las canciones SSEQ se conservan sin sintetizar.
-`--rapido` genera una muestra parcial. El catálogo registra los nombres originales y los SHA-256 de cada recurso.
+| Juego | Id | Código de ROM | `--rapido` |
+|---|---|---|---|
+| Animal Crossing: Wild World | `animal-crossing` | `ADMP` | sí |
+| Inazuma Eleven | `inazuma-eleven` | `YEES` | sí |
+| Mario Party DS | `mario-party-ds` | `A8TP` | sí |
+| Mario Kart DS | `mkds` | `AMCP` | no |
+| New Super Mario Bros. | `nsmb` | `A2DP` | no |
+| Phoenix Wright: Trials and Tribulations | `phoenix-wright-3` | `YG3Y` | sí |
+| Pokémon Platino | `pokemon-platino` | `CPUS` y otras regiones | no |
+| El profesor Layton y la villa misteriosa | `profesor-layton` | `A5FP` | sí |
+| Super Mario 64 DS | `super-mario-64-ds` | `ASMP` | sí |
+
+- **Comprobar el estado**: `python valedores.py estado` indica de cada juego si tiene ROM y si sus assets están al día, y avisa si un extractor
+  ha cambiado desde la última extracción. `python valedores.py roms` lista las ROMs reconocidas; el nombre del fichero da igual.
+- **Si falla**: la orden termina con un código distinto de 0 y dice qué juego ha fallado (por ejemplo, si falta su ROM o el id no existe), pero
+  sigue con los demás. `python valedores.py doctor` revisa el entorno.
+- **Git**: los assets no se suben; cada persona los regenera en local con la última versión del extractor. Las ROMs nunca se modifican.
+- **Modo rápido**: `--rapido` deja la extracción marcada como parcial; vuelve a extraer sin esa opción para tenerla completa. En los juegos
+  que no lo admiten se extrae todo.
+
+En Inazuma Eleven, Mario Party DS, Phoenix Wright, Layton y Super Mario 64 DS, los formatos propietarios pendientes se conservan como binarios
+originales. Consulta `README.md`, `catalogo.json` (nombres originales y SHA-256), `avisos.log` y `errores.log` en su carpeta para conocer la cobertura
+real. Los WAV extraídos son muestras de instrumentos; los motores pueden sintetizar las canciones SSEQ para los vídeos. La API y los límites de
+esos motores están en [motor-video-nds.md](conocimiento/motor-video-nds.md).
+
+## El estudio
 
 Una página local (`127.0.0.1`, sin dependencias externas):
 
@@ -51,6 +74,8 @@ Una página local (`127.0.0.1`, sin dependencias externas):
   para Codex defínelo en `valedores.toml`, sección `[precios]`).
 - **Ahorro de tokens**: el chat enseña el tamaño del contexto (`ctx`); al cambiar de fase con la conversación grande, el agente sigue en una sesión
   nueva con un resumen del proyecto (ajustable, botón ↻ para forzarlo).
+- **Aprendizajes**: el agente anota como regla lo que corriges y que vale para otros vídeos; en la pestaña *Aprendizajes* decides qué se guarda en el
+  conocimiento del juego. `python valedores.py madurez` enseña cómo evoluciona cada juego.
 - **Pedir cambios**: sobre cualquier fase o elemento y en cualquier momento; el estudio marca lo que hay que rehacer (y lo posterior afectado).
 - **Trabajo en paralelo**: «⇉ En paralelo» lanza un agente aparte para una fase que no dependa de las que están en marcha.
 - **Adjuntos en el chat**: botón 📎, arrastrar ficheros sobre el chat o pegar una captura. Se guardan en `entrada/<proyecto>/` y el agente recibe

@@ -32,6 +32,10 @@ Juegos: `animal-crossing`, `nsmb`, `mkds`, `pokemon-platino`. Estado: `python va
 ## Reglas globales
 - **Las ROMs no se modifican nunca** y no se suben a Git. Los assets de un vídeo salen de la ROM del juego; lo que aporte el usuario
   (`entrada/`) es una excepción concreta que se anota en el brief y no se extiende a otros vídeos.
+- **Fotos de personas = referencias de identidad por defecto**: crea su personaje con el estilo de los assets reales del juego
+  (sprites pequeños en Inazuma, bustos anime DS en Phoenix; modelo nativo con textura facial en 3D). Aplica
+  `conocimiento/personajes-desde-fotos.md` antes de montar escenas. Conserva parecido, proporciones y resolución del juego.
+  Una foto sin adaptar o un collage requiere que el usuario lo pida; si falta la conversión, resuélvela o comunica el límite.
 - **Nada se da por bueno sin verlo**: abre las imágenes generadas con la herramienta de lectura de imágenes (Read en Claude Code,
   view_image en Codex). Generar una hoja de contactos no es revisarla. No digas que has oído algo que solo has medido.
 - Texto de los vídeos en español, con la fuente del propio juego. Comentarios y mensajes del código en español; respeta el estilo existente.

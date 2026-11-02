@@ -4,3 +4,7 @@ soundfile>=0.12
 librosa>=0.10
 faster-whisper>=1.0
 demucs>=4.0
+
+# Detección automática de ojos y boca en fotos (Mario Party DS). Sin ella, pasa Hitos a mano.
+# Fijada: las versiones 5.x suben numpy a 2.x y el repo usa numpy 1.26.
+opencv-python-headless==4.10.0.84

@@ -1,0 +1,41 @@
+{
+ "siguiente": 4,
+ "lecciones": [
+  {
+   "id": 1,
+   "regla": "Usa los sprites RPG pequeños de spr/char para los personajes en el escenario, con cuerpo, cabeza, paletas y frames; adapta también las fotos a ese formato.",
+   "causa": "Se usaban retratos flotantes y cuerpos ajenos al estilo del juego.",
+   "veces": 1,
+   "origenes": [
+    "bolas_inazuma"
+   ],
+   "estado": "activa",
+   "creada": 1793118246,
+   "ultima": 1793118246
+  },
+  {
+   "id": 2,
+   "regla": "Prepara las ocho direcciones y orienta al personaje según el movimiento; usa el escenario real a escala del sprite y amplía toda la composición con la cámara, sin tratar el minimapa como fondo de juego.",
+   "causa": "Un frontal único y el minimapa completo daban movimientos y proporciones incorrectas.",
+   "veces": 1,
+   "origenes": [
+    "bolas_inazuma"
+   ],
+   "estado": "activa",
+   "creada": 1793121294,
+   "ultima": 1793121294
+  },
+  {
+   "id": 3,
+   "regla": "Compón FONT12 con un píxel lógico entre glifos y revisa los textos ampliados antes de validar la previsualización.",
+   "causa": "Los avances de FONT12 igualan el ancho de tinta y las letras quedaban pegadas; la revisión anterior no detectó el fallo.",
+   "veces": 1,
+   "origenes": [
+    "bolainazuma#1"
+   ],
+   "estado": "activa",
+   "creada": 1793648043,
+   "ultima": 1793648043
+  }
+ ]
+}

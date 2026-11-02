@@ -3,9 +3,9 @@
 
 const ESTADO_TXT = {
   pendiente: 'Pendiente', en_curso: 'En curso', validar: 'Espera tu validación', aprobada: 'Aprobada',
-  cambios: 'Cambios por rehacer', omitida: 'Omitida',
+  cambios: 'Por rehacer (hay un cambio pedido)', omitida: 'Omitida',
 };
-const ESTADO_CORTO = { pendiente: 'pendiente', en_curso: 'en curso', validar: 'a validar', aprobada: 'aprobada', cambios: 'con cambios', omitida: 'omitida' };
+const ESTADO_CORTO = { pendiente: 'pendiente', en_curso: 'en curso', validar: 'a validar', aprobada: 'aprobada', cambios: 'por rehacer', omitida: 'omitida' };
 const GLIFO_ESTADO = { pendiente: '○', validar: '●', aprobada: '✓', cambios: '✎', omitida: '–' };
 const ICONO_FASE = { idea: '💡', guion: '📝', musica: '🎵', storyboard: '🧩', escenas: '🖼️', render: '🎞️', revision: '🔍' };
 const ICONO_TIPO = {
@@ -132,4 +132,29 @@ function dialogo(titulo, cuerpo, acciones, ancho) {
   document.addEventListener('keydown', tecla, true);
   document.body.append(m);
   return { cerrar, el: m };
+}
+
+// Visor de imágenes a pantalla completa con flechas (← →) para recorrer todas las de un conjunto. `lista`: [{url, nombre}].
+function galeria(lista, inicio) {
+  let i = inicio || 0;
+  const img = h('img', { alt: '' });
+  const pie = h('div', { class: 'gal-pie' });
+  const ant = h('button', { class: 'gal-flecha ant', title: 'Anterior (←)', onclick: ev => { ev.stopPropagation(); ir(-1); } }, '‹');
+  const sig = h('button', { class: 'gal-flecha sig', title: 'Siguiente (→)', onclick: ev => { ev.stopPropagation(); ir(1); } }, '›');
+  const cerrar = () => { m.remove(); document.removeEventListener('keydown', tecla, true); };
+  const tecla = e => {
+    if (e.key === 'Escape') cerrar();
+    else if (e.key === 'ArrowLeft') ir(-1);
+    else if (e.key === 'ArrowRight') ir(1);
+  };
+  function ir(d) { i = (i + d + lista.length) % lista.length; pintar(); }
+  function pintar() {
+    img.src = lista[i].url;
+    pie.textContent = lista[i].nombre + (lista.length > 1 ? '  ·  ' + (i + 1) + ' / ' + lista.length : '');
+    ant.hidden = sig.hidden = lista.length < 2;
+  }
+  const m = h('div', { class: 'modal galeria', onclick: cerrar }, ant, h('figure', { onclick: ev => ev.stopPropagation() }, img, pie), sig);
+  document.addEventListener('keydown', tecla, true);
+  document.body.append(m);
+  pintar();
 }

@@ -3,8 +3,8 @@
   "nombre": "Mario Party DS",
   "corto": "Mario Party DS",
   "plataforma": "Nintendo DS",
-  "descripcion": "Extracción base de recursos. Contenedores BIN, descompresión LZ, recursos Nitro y bancos SDAT. Modelos y animaciones propios conservados sin reconstruir.",
-  "soporte": "extraccion",
+  "descripcion": "Personajes y objetos 3D en pose de reposo, con cámara animada, capas y música original.",
+  "soporte": "video",
   "rom": {
     "codigos": [
       "A8TP"
@@ -34,6 +34,18 @@
       "nucleo/valedores/recursos_nds.py"
     ]
   },
-  "formatos": [],
-  "vistas": []
+  "formatos": [
+    {
+      "id": "horizontal",
+      "nombre": "Horizontal 1280x720",
+      "skill": "cinematica-mario-party-ds"
+    },
+    {
+      "id": "vertical",
+      "nombre": "Vertical 1080x1920",
+      "skill": "cinematica-mario-party-ds"
+    }
+  ],
+  "vistas": [],
+  "motor": "video/"
 }

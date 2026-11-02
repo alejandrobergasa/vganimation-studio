@@ -1,0 +1,29 @@
+{
+ "siguiente": 3,
+ "lecciones": [
+  {
+   "id": 1,
+   "regla": "Adapta las fotos de personas al estilo de los assets del juego por defecto: sprites pixel art, poses anime o textura facial sobre un modelo nativo 3D; usa foto directa solo si se pide.",
+   "causa": "Las caras fotográficas y cuerpos procedurales no se integraban con los personajes del juego.",
+   "veces": 1,
+   "origenes": [
+    "bolas_phoenix"
+   ],
+   "estado": "activa",
+   "creada": 1793118246,
+   "ultima": 1793118246
+  },
+  {
+   "id": 2,
+   "regla": "Para personajes 3D usa un modelo completo de pie y anima brazos, piernas y cuerpo; no uses un modelo sentado en pose de reposo como actor",
+   "causa": "El usuario rechazó el Mario sentado/inflado de b_mario_all",
+   "veces": 1,
+   "origenes": [
+    "persecucion_en_el_campo"
+   ],
+   "estado": "activa",
+   "creada": 1793121779,
+   "ultima": 1793121779
+  }
+ ]
+}

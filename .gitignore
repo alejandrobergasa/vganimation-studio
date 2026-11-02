@@ -22,6 +22,7 @@ biblioteca/*/extraidos/
 .cache/
 **/trabajo/
 proyectos/*/trabajo/
+proyectos/*
 
 # Vídeos y audio de resultado en cualquier sitio
 *.mp4

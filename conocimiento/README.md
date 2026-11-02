@@ -8,6 +8,9 @@ Lo que sirve para **varios juegos**. Lo específico de un juego (formatos de la 
 | [flujo-de-trabajo.md](flujo-de-trabajo.md) | Fases de un vídeo, puertas de validación, qué entrega cada fase y cómo se comunican agente y estudio. |
 | [video-vertical-redes.md](video-vertical-redes.md) | Formato móvil (TikTok/Reels/Shorts): resolución, zonas seguras, legibilidad, ritmo. |
 | [audio.md](audio.md) | Música propia con los instrumentos del juego, voces, efectos, mezcla y niveles. |
+| [motor-video-nds.md](motor-video-nds.md) | Motores de Inazuma, Mario Party, Phoenix Wright, Layton y SM64DS: API, recursos nativos y límites. |
+| [personajes-desde-fotos.md](personajes-desde-fotos.md) | Adaptar fotos al estilo del juego: sprites, poses anime y texturas faciales de modelos 3D. |
+| `lecciones.md` / [reglas-de-produccion.md](reglas-de-produccion.md) | Reglas comunes aprendidas de las correcciones del usuario (se generan con `valedores.py leccion`; pueden no existir aún). |
 | [revision.md](revision.md) | Cómo revisar imagen, texto y audio; errores típicos de revisión. |
 | [datos-y-fuentes.md](datos-y-fuentes.md) | Vídeos con cifras reales: verificar, citar y redondear. |
 | [plantillas/](plantillas/) | `brief.md`, `guion.md`, `storyboard.md` listos para copiar. |

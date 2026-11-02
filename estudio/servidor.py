@@ -538,6 +538,15 @@ class Handler(BaseHTTPRequestHandler):
                 texto = 'Te adjunto estos ficheros.'
             r = chat.obtener(slug, carril).enviar(texto, adjuntos)
             return self._json({'ok': True, 'cola': r == 'cola'}, 202)
+        m = re.fullmatch(r'/api/proyectos/([\w-]+)/elemento/([\w-]+)', ruta)
+        if m and metodo == 'POST':
+            slug, eid = m.group(1), m.group(2)
+            estado = self._leer_json().get('estado')
+            if estado not in ('aprobada', 'validar'):
+                raise ValueError('Solo se puede dar el visto bueno (aprobada) o quitarlo (validar).')
+            if eid not in proyectos.leer(slug).get('elementos', {}):
+                return self._error(404, 'No existe el elemento')
+            return self._json(proyectos.elemento(slug, eid, estado=estado))
         m = re.fullmatch(r'/api/proyectos/([\w-]+)/cambio', ruta)
         if m and metodo == 'POST':
             slug = m.group(1)

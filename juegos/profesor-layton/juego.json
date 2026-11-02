@@ -3,8 +3,8 @@
   "nombre": "El profesor Layton y la villa misteriosa",
   "corto": "Profesor Layton",
   "plataforma": "Nintendo DS",
-  "descripcion": "Extracción base de recursos. Descompresión Level-5, fondos de data/bg, fuentes NFTR y bancos SDAT. Animaciones ARC/ARJ y audio SADL conservados sin convertir.",
-  "soporte": "extraccion",
+  "descripcion": "Personajes 2D con gestos animados, escenarios, letreros y música original.",
+  "soporte": "video",
   "rom": {
     "codigos": [
       "A5FP"
@@ -34,6 +34,18 @@
       "nucleo/valedores/recursos_nds.py"
     ]
   },
-  "formatos": [],
-  "vistas": []
+  "formatos": [
+    {
+      "id": "horizontal",
+      "nombre": "Horizontal 1280x720",
+      "skill": "cinematica-profesor-layton"
+    },
+    {
+      "id": "vertical",
+      "nombre": "Vertical 1080x1920",
+      "skill": "cinematica-profesor-layton"
+    }
+  ],
+  "vistas": [],
+  "motor": "video/"
 }

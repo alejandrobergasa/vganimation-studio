@@ -388,6 +388,8 @@ def contexto(slug, carril=None):
         '- Carpeta del proyecto: `proyectos/%s/` (estado en `proyecto.json`). Ficheros del usuario: `entrada/%s/` y `entrada/`.' % (slug, slug),
         '- Variable de entorno `VALEDORES_PROYECTO=%s` activa: los motores ya dejan el vídeo en `salida/%s/` y los temporales en `proyectos/%s/trabajo/`.' % (slug, slug, slug),
         '- Sigue la skill `crear-video`' + (' y la del juego `%s`.' % skill if skill else '.'),
+        '- Las fotos de personas son referencias de identidad: adáptalas al estilo de los assets del juego salvo petición explícita de foto directa. '
+        'Lee `conocimiento/personajes-desde-fotos.md`: Inazuma usa sprites pequeños; Phoenix, poses anime DS; en 3D, modelo nativo con textura facial.',
         '- Los assets extraídos están en `biblioteca/%s/extraidos/` (si faltan: `python valedores.py extraer %s`).' % (m['id'], m['id']),
         '- Lecciones de correcciones anteriores: lee `juegos/%s/lecciones.md` y `conocimiento/lecciones.md` si existen, y aplícalas desde el principio.'
         ' Cuando el usuario te corrija algo que valga para futuros vídeos, regístralo: `python valedores.py leccion %s "<regla>" --causa "<por qué fallaba>"`.' % (m['id'], slug),

@@ -3,8 +3,8 @@
   "nombre": "Super Mario 64 DS",
   "corto": "Super Mario 64 DS",
   "plataforma": "Nintendo DS",
-  "descripcion": "Extracción base de recursos. Archivos NitroFS, miembros NARC, descompresión LZ77/LZ y bancos SDAT. Los BMD/BCA propios no son modelos Nitro estándar.",
-  "soporte": "extraccion",
+  "descripcion": "Personajes y objetos 3D en pose de reposo, con cámara animada, capas y música original.",
+  "soporte": "video",
   "rom": {
     "codigos": [
       "ASMP"
@@ -34,6 +34,18 @@
       "nucleo/valedores/recursos_nds.py"
     ]
   },
-  "formatos": [],
-  "vistas": []
+  "formatos": [
+    {
+      "id": "horizontal",
+      "nombre": "Horizontal 1280x720",
+      "skill": "cinematica-super-mario-64-ds"
+    },
+    {
+      "id": "vertical",
+      "nombre": "Vertical 1080x1920",
+      "skill": "cinematica-super-mario-64-ds"
+    }
+  ],
+  "vistas": [],
+  "motor": "video/"
 }

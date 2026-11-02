@@ -3,8 +3,8 @@
   "nombre": "Phoenix Wright: Ace Attorney – Trials and Tribulations",
   "corto": "Phoenix Wright 3",
   "plataforma": "Nintendo DS",
-  "descripcion": "Extracción base de recursos. Archivos originales, scripts binarios de mes_all.bin y bancos SDAT. Los gráficos empaquetados en data.bin requieren un decodificador específico.",
-  "soporte": "extraccion",
+  "descripcion": "Escenas 2D con poses de personajes, fondos y música original. La fuente de diálogos aún necesita un lector.",
+  "soporte": "video",
   "rom": {
     "codigos": [
       "YG3Y"
@@ -34,6 +34,18 @@
       "nucleo/valedores/recursos_nds.py"
     ]
   },
-  "formatos": [],
-  "vistas": []
+  "formatos": [
+    {
+      "id": "horizontal",
+      "nombre": "Horizontal 1280x720",
+      "skill": "cinematica-phoenix-wright-3"
+    },
+    {
+      "id": "vertical",
+      "nombre": "Vertical 1080x1920",
+      "skill": "cinematica-phoenix-wright-3"
+    }
+  ],
+  "vistas": [],
+  "motor": "video/"
 }

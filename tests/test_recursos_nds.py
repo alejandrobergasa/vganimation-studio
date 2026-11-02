@@ -149,12 +149,12 @@ def test_rapido_limita_y_etiqueta(tmp_path):
 def test_manifiestos_de_extraccion_y_huella(monkeypatch, tmp_path):
     for juego, codigo in NUEVOS.items():
         m = rutas.manifiesto(juego)
-        assert m['rom']['codigos'] == [codigo] and m['soporte'] == 'extraccion'
-        assert not m['formatos'] and juegos.skills_del_juego(juego) == ['recursos-' + juego]
+        assert m['rom']['codigos'] == [codigo] and m['soporte'] == 'video'
+        assert {f['id'] for f in m['formatos']} == {'horizontal', 'vertical'}
+        assert juegos.skills_del_juego(juego) == ['cinematica-' + juego, 'recursos-' + juego]
+        assert (Path(rutas.motor_dir(juego)) / 'motor.py').is_file()
         assert all(Path(p).is_file() for p in juegos._archivos_extractor(juego))
         assert 'nucleo/valedores/nitro.py' in m['extractor']['fuentes']
-        with pytest.raises(ValueError, match='motor de vídeo'):
-            proyectos.crear('No hay motor', juego)
         monkeypatch.setattr(rutas, 'rom', lambda _: str(tmp_path / 'prueba.nds'))
         args = extraer.comandos(juego, rapido=True)[0]
         assert args[0] == 'tools/extraer.py' and args[-1] == '--rapido'

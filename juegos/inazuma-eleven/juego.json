@@ -3,8 +3,8 @@
   "nombre": "Inazuma Eleven",
   "corto": "Inazuma Eleven",
   "plataforma": "Nintendo DS",
-  "descripcion": "Extracción base de recursos. Paquetes PKB/PKH PackNum, PAC, texturas Nitro y fuentes NFTR. Sprites, SADL y vídeo MODS conservados en formato original.",
-  "soporte": "extraccion",
+  "descripcion": "Escenas 2D con sprites pequeños animados, mapas, retratos, letreros y voces originales del juego.",
+  "soporte": "video",
   "rom": {
     "codigos": [
       "YEES"
@@ -34,6 +34,18 @@
       "nucleo/valedores/recursos_nds.py"
     ]
   },
-  "formatos": [],
-  "vistas": []
+  "formatos": [
+    {
+      "id": "horizontal",
+      "nombre": "Horizontal 1280x720",
+      "skill": "cinematica-inazuma-eleven"
+    },
+    {
+      "id": "vertical",
+      "nombre": "Vertical 1080x1920",
+      "skill": "cinematica-inazuma-eleven"
+    }
+  ],
+  "vistas": [],
+  "motor": "video/"
 }

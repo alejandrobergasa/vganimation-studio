@@ -14,6 +14,8 @@
 
 ## Material del usuario (`entrada/`)
 - `<fichero>` — <para qué se usa; excepción a «solo assets de la ROM»>
+- Fotos de personajes: <identidad → sprite, pose anime o textura facial 3D; asset nativo de referencia y derivados previstos>.
+  Por defecto se adaptan al estilo del juego; foto directa/collage solo por petición explícita.
 
 ## Datos a verificar
 - <cifra o hecho> — fuente prevista

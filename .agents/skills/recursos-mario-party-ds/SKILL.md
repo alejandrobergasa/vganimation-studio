@@ -15,4 +15,4 @@ Lee juegos/mario-party-ds/AGENTS.md, CONOCIMIENTO.md y conocimiento/README.md.
 
 Alcance: extracción base; Contenedores BIN, descompresión LZ, recursos Nitro y bancos SDAT. Modelos y animaciones propios conservados sin reconstruir.
 
-No hay motor de vídeo disponible. No trates formatos propietarios como Nitro estándar por su extensión y no prometas reconstrucción de personajes o escenas hasta implementar y revisar sus lectores.
+El motor de vídeo está disponible en video/motor.py; para componer usa la skill cinematica-mario-party-ds. No trates formatos propietarios como Nitro estándar por su extensión y no prometas reconstrucción de personajes o escenas hasta implementar y revisar sus lectores.

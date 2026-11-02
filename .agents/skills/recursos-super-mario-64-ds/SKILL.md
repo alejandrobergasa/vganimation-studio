@@ -15,4 +15,4 @@ Lee juegos/super-mario-64-ds/AGENTS.md, CONOCIMIENTO.md y conocimiento/README.md
 
 Alcance: extracción base; Archivos NitroFS, miembros NARC, descompresión LZ77/LZ y bancos SDAT. Los BMD/BCA propios no son modelos Nitro estándar.
 
-No hay motor de vídeo disponible. No trates formatos propietarios como Nitro estándar por su extensión y no prometas reconstrucción de personajes o escenas hasta implementar y revisar sus lectores.
+El motor de vídeo está disponible en video/motor.py; para componer usa la skill cinematica-super-mario-64-ds. No trates formatos propietarios como Nitro estándar por su extensión y no prometas reconstrucción de personajes o escenas hasta implementar y revisar sus lectores.
